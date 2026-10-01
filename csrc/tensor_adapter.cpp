@@ -16,7 +16,7 @@ tbccl::DataType to_tbccl_dtype(at::ScalarType type)
     case at::kFloat: return tbccl::DataType::Float32;
     default:
         TORCH_CHECK_NOT_IMPLEMENTED(
-            false, "torch-tbccl: unsupported operation: dtype ", type, " (supports torch.float32 only)");
+            false, "torch-tbccl: unsupported operation: dtype ", type, " (reductions support torch.float32 only)");
     }
 }
 

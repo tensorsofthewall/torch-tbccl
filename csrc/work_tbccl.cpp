@@ -53,7 +53,11 @@ bool WorkTBCCL::wait(std::chrono::milliseconds timeout)
             if (nap < std::chrono::microseconds(1000)) nap *= 2;
         }
     }
-    if (state_->trace) state_->trace->wait_exit_ns.store(trace_now_ns());
+    if (state_->trace)
+    {
+        state_->trace->stamp_complete();
+        state_->trace->wait_exit_ns.store(trace_now_ns());
+    }
     if (state_->has_error()) throw_tbccl_error(state_->op_name, state_->error());
     return true;
 }

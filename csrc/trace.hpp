@@ -28,10 +28,18 @@ struct TraceRecord
     std::uint64_t entry_ns = 0;
     std::uint64_t before_submit_ns = 0;
     std::uint64_t return_ns = 0;
-    std::atomic<std::uint64_t> complete_ns{0};   // set by the completion worker
+    // First observer of completion wins (the completion worker or a wait() return), so a caller that reads
+    // the trace right after wait() never sees 0.
+    std::atomic<std::uint64_t> complete_ns{0};
     std::atomic<std::uint64_t> wait_entry_ns{0}; // first Work::wait() call, if any
     std::atomic<std::uint64_t> wait_exit_ns{0};
     std::atomic<std::uint64_t> error{0};
+
+    void stamp_complete()
+    {
+        std::uint64_t zero = 0;
+        complete_ns.compare_exchange_strong(zero, trace_now_ns());
+    }
 };
 
 bool trace_enabled();

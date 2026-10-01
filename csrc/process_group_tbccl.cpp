@@ -10,6 +10,7 @@
 
 #include <tbccl/cuda_support.hpp>
 
+#include <cstdlib>
 #include <exception>
 #include <mutex>
 
@@ -47,6 +48,7 @@ ProcessGroupTBCCL::ProcessGroupTBCCL(
     TORCH_CHECK_VALUE(store_ != nullptr, "torch-tbccl: invalid argument: store is null");
 
     ensure_cuda_support();
+    if (const char *v = std::getenv("TORCH_TBCCL_FORCE_SYNC_ALLREDUCE")) force_sync_allreduce_ = v[0] != '\0' && v[0] != '0';
 
     // Validate locally before touching the Store or the network.
     const auto local = local_endpoint_from_env();
@@ -117,6 +119,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
         if (state->trace) state->trace->before_submit_ns = trace_now_ns();
         state->work = comm_->all_reduce(buf.view, buf.view, buf.count, buf.datatype, op, buf.context);
         if (state->trace) state->trace->return_ns = trace_now_ns();
+        if (force_sync_allreduce_) state->work->wait();
     }
     catch (const std::runtime_error &e)
     {

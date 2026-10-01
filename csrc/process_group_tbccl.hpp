@@ -65,6 +65,9 @@ private:
 
     c10::intrusive_ptr<c10d::Store> store_;
     std::chrono::milliseconds timeout_;
+    // Diagnostic only (TORCH_TBCCL_FORCE_SYNC_ALLREDUCE=1): allreduce waits for TBCCL before returning,
+    // giving a no-overlap baseline for DDP. Never a production mode.
+    bool force_sync_allreduce_ = false;
     // Guards comm_/completion_ and serializes submission (TBCCL runs one
     // collective at a time); never held while waiting on a collective.
     mutable std::mutex mutex_;

@@ -30,7 +30,7 @@ tbccl::ReduceOp to_tbccl_reduce_op(const c10d::ReduceOp &op)
     }
 }
 
-TbcclBuffer to_tbccl_buffer(const at::Tensor &t)
+TbcclBuffer to_tbccl_buffer(const at::Tensor &t, bool bytes_only)
 {
     TORCH_CHECK_VALUE(t.defined(), "torch-tbccl: invalid argument: undefined tensor");
     TORCH_CHECK_NOT_IMPLEMENTED(
@@ -48,7 +48,7 @@ TbcclBuffer to_tbccl_buffer(const at::Tensor &t)
         is_cuda ? " (this build has no CUDA support)" : " (supported: CPU, CUDA)");
 
     TbcclBuffer out;
-    out.datatype = to_tbccl_dtype(t.scalar_type());
+    if (!bytes_only) out.datatype = to_tbccl_dtype(t.scalar_type());
     // No silent .contiguous(): that would copy and break in-place/async semantics.
     TORCH_CHECK_VALUE(
         t.is_contiguous(), "torch-tbccl: invalid argument: tensor must be contiguous (no implicit copy is made)");

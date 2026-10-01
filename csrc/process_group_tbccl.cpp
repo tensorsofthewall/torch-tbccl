@@ -114,6 +114,95 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
     return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::ALLREDUCE, state);
 }
 
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::finish(
+    std::shared_ptr<WorkState> state, c10d::OpType op)
+{
+    // Trivially complete (zero bytes): both ranks skip the exchange consistently.
+    state->future->markCompleted(c10::IValue(state->tensors));
+    return c10::make_intrusive<WorkTBCCL>(getRank(), op, state);
+}
+
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::broadcast(
+    std::vector<at::Tensor> &tensors, const c10d::BroadcastOptions &opts)
+{
+    TORCH_CHECK_VALUE(
+        tensors.size() == 1,
+        "torch-tbccl: invalid argument: broadcast takes exactly one tensor (got ", tensors.size(), ")");
+    TORCH_CHECK_VALUE(
+        opts.rootRank >= 0 && opts.rootRank < getSize(),
+        "torch-tbccl: invalid argument: broadcast rootRank ", opts.rootRank, " outside [0, ", getSize(), ")");
+    TORCH_CHECK_NOT_IMPLEMENTED(
+        opts.rootTensor == 0, "torch-tbccl: unsupported operation: broadcast rootTensor must be 0 (got ", opts.rootTensor, ")");
+    const auto buf = to_tbccl_buffer(tensors[0], true);
+
+    auto state = std::make_shared<WorkState>();
+    state->tensors = tensors;
+    state->op_name = "broadcast";
+    state->future = c10::make_intrusive<c10::ivalue::Future>(c10::ListType::create(c10::TensorType::get()));
+    if (buf.view.bytes == 0) return finish(state, c10d::OpType::BROADCAST);
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
+    try
+    {
+        state->work = comm_->broadcast(buf.view, static_cast<std::size_t>(opts.rootRank), buf.context);
+    }
+    catch (const std::runtime_error &e)
+    {
+        throw_tbccl_error("broadcast", e.what());
+    }
+    completion_->enqueue(state);
+    return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::BROADCAST, state);
+}
+
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather(
+    std::vector<std::vector<at::Tensor>> &outputTensors,
+    std::vector<at::Tensor> &inputTensors,
+    const c10d::AllgatherOptions &)
+{
+    TORCH_CHECK_VALUE(
+        inputTensors.size() == 1 && outputTensors.size() == 1,
+        "torch-tbccl: invalid argument: allgather takes one input tensor and one output list (got ",
+        inputTensors.size(), " inputs, ", outputTensors.size(), " output lists)");
+    const auto &input = inputTensors[0];
+    auto &outs = outputTensors[0];
+    TORCH_CHECK_VALUE(
+        static_cast<int>(outs.size()) == getSize(),
+        "torch-tbccl: invalid argument: allgather output list must have world_size (", getSize(), ") tensors (got ",
+        outs.size(), ")");
+
+    const auto in_buf = to_tbccl_buffer(input, true);
+    std::vector<tbccl::BufferView> views;
+    for (const auto &o : outs)
+    {
+        const auto b = to_tbccl_buffer(o, true);
+        TORCH_CHECK_VALUE(
+            o.scalar_type() == input.scalar_type() && o.numel() == input.numel() && o.device() == input.device(),
+            "torch-tbccl: invalid argument: allgather outputs must match the input's dtype, numel and device");
+        views.push_back(b.view);
+    }
+
+    auto state = std::make_shared<WorkState>();
+    state->tensors = outs;
+    state->retained = {input};
+    state->op_name = "allgather";
+    state->future = c10::make_intrusive<c10::ivalue::Future>(c10::ListType::create(c10::TensorType::get()));
+    if (in_buf.view.bytes == 0) return finish(state, c10d::OpType::ALLGATHER);
+
+    std::lock_guard<std::mutex> lock(mutex_);
+    TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
+    try
+    {
+        state->work = comm_->all_gather(in_buf.view, views, in_buf.context);
+    }
+    catch (const std::runtime_error &e)
+    {
+        throw_tbccl_error("allgather", e.what());
+    }
+    completion_->enqueue(state);
+    return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::ALLGATHER, state);
+}
+
 bool ProcessGroupTBCCL::is_shutdown() const
 {
     std::lock_guard<std::mutex> lock(mutex_);

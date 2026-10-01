@@ -4,19 +4,21 @@
 #include <torch/csrc/distributed/c10d/Store.hpp>
 
 #include "completion_worker.hpp"
+#include "work_tbccl.hpp"
 
 #include <tbccl/communicator.hpp>
 
 #include <chrono>
 #include <memory>
 #include <mutex>
+#include <optional>
 
 namespace torch_tbccl
 {
 
 // c10d backend adapting torch.distributed onto an installed TBCCL
 // Communicator. world_size == 2 only. No collectives are
-// implemented except allreduce; every other inherited collective throws
+// implemented except allreduce, broadcast and allgather; every other inherited collective throws
 // "does not support X".
 class ProcessGroupTBCCL : public c10d::Backend
 {
@@ -46,7 +48,21 @@ public:
         std::vector<at::Tensor> &tensors,
         const c10d::AllreduceOptions &opts = c10d::AllreduceOptions()) override;
 
+    // Byte-generic (any dense contiguous dtype). Exactly one tensor, rootTensor == 0.
+    c10::intrusive_ptr<c10d::Work> broadcast(
+        std::vector<at::Tensor> &tensors,
+        const c10d::BroadcastOptions &opts = c10d::BroadcastOptions()) override;
+
+    // One input, one output list of world_size tensors with the input's dtype/numel, all on the
+    // input's device. Variable sizes across ranks are not supported (DDP exchanges equal sizes).
+    c10::intrusive_ptr<c10d::Work> allgather(
+        std::vector<std::vector<at::Tensor>> &outputTensors,
+        std::vector<at::Tensor> &inputTensors,
+        const c10d::AllgatherOptions &opts = c10d::AllgatherOptions()) override;
+
 private:
+    c10::intrusive_ptr<c10d::Work> finish(std::shared_ptr<WorkState> state, c10d::OpType op);
+
     c10::intrusive_ptr<c10d::Store> store_;
     std::chrono::milliseconds timeout_;
     // Guards comm_/completion_ and serializes submission (TBCCL runs one

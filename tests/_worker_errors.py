@@ -32,8 +32,8 @@ expect(ValueError, "contiguous", lambda: dist.all_reduce(torch.ones(16)[::2]))
 expect(ValueError, "contiguous", lambda: dist.all_reduce(torch.ones(4, 4).t()))
 expect(ValueError, "exactly one tensor", lambda: pg.allreduce([f(), f()]))
 expect(Exception, "", lambda: dist.all_reduce(torch.ones(4).to_sparse()))
-expect(Exception, "does not support", lambda: dist.broadcast(f(), src=0))
-expect(Exception, "does not support", lambda: dist.all_gather([f(), f()], f()))
+expect(Exception, "does not support", lambda: dist.reduce(f(), dst=0))
+expect(Exception, "does not support", lambda: dist.reduce_scatter_tensor(torch.ones(8), torch.ones(16)))
 # meta tensors never reach the backend: c10d dispatches them to a no-op meta kernel.
 
 # group still usable afterwards

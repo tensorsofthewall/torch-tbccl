@@ -109,7 +109,11 @@ elif mode == "timeout":
 
 elif mode == "threads":
     def threads():
-        return len(os.listdir("/proc/self/task"))
+        if os.path.isdir("/proc/self/task"):
+            return len(os.listdir("/proc/self/task"))
+        import subprocess  # macOS: one `ps -M` row per thread, after the header
+
+        return len(subprocess.check_output(["ps", "-M", "-p", str(os.getpid())], text=True).splitlines()) - 1
     x = vals(rank, 128)
     dist.all_reduce(x)
     before = threads()

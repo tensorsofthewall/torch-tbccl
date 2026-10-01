@@ -12,8 +12,10 @@ PyTorch -> torch-tbccl -> installed libtbccl -> TBCCL transport/collectives
 ```
 
 ## Status
-Package skeleton builds and links against installed TBCCL; the backend
-registration and AllReduce are being added (see `docs/`).
+- Done: package builds against an installed TBCCL; `import torch_tbccl`
+  registers the `"tbccl"` backend (idempotent); `init_process_group("tbccl")`
+  rendezvouses through the c10d Store and creates a TBCCL `Communicator`.
+- Not yet: any collective (AllReduce is the next commit), CUDA tensors.
 
 Target usage:
 
@@ -43,8 +45,11 @@ python -c "import torch_tbccl; print(torch_tbccl.__version__, torch_tbccl.runtim
 pytest
 ```
 
-Each rank will need `TBCCL_LOCAL_ENDPOINT=<ip>:<port>` for its TBCCL data
-endpoint (separate from PyTorch's rendezvous store).
+Each rank needs `TBCCL_LOCAL_ENDPOINT=<host>:<port>` for its TBCCL data
+endpoint (separate from PyTorch's rendezvous store; give each rank a
+distinct endpoint, including on one machine). Endpoints are exchanged
+through the Store under `torch_tbccl/v1/endpoint/<rank>`; the PyTorch
+timeout bounds the exchange and TBCCL connection setup.
 
 ## Known limitations
 World size 2 only; Float32 SUM AllReduce only; no DDP/FSDP; no MPS.

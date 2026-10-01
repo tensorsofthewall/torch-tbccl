@@ -46,3 +46,14 @@ Backend.register_backend(name, func, extended_api=False, devices=None, *, _backe
 - `ProcessGroupGloo.hpp` / `ProcessGroupNCCL.hpp` as reference for the
   Work subclass pattern and stream handling.
 - Current-CUDA-stream API (`c10/cuda/CUDAStream.h`) when the CUDA commit lands.
+
+## Observed behavior (verified in tests)
+- `init_process_group("tbccl")` calls `func(prefix_store, group_rank, group_size, timeout)`
+  with a `datetime.timedelta`; pybind converts it to `std::chrono::duration<float>`.
+  Only `getBackendName()` and a constructor are needed for creation/teardown;
+  no `getBackendOptions()` call occurs on this path.
+- Bindings release the GIL (`call_guard<gil_scoped_release>`) because
+  bootstrap blocks on the Store and the network.
+- TBCCL reports errors as `std::runtime_error` with a tagged message
+  (`CommunicatorError` is mentioned in `types.hpp` but is not declared in
+  the installed headers); error mapping must key off that tag prefix.

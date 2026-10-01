@@ -26,6 +26,7 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 
 p = argparse.ArgumentParser()
 p.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
+p.add_argument("--devices", default=None, help="per-rank devices, e.g. cuda,cpu (overrides --device)")
 p.add_argument("--mode", default="train", choices=["train", "buffers", "count-mismatch", "shape-mismatch"])
 p.add_argument("--steps", type=int, default=20)
 p.add_argument("--bucket-cap-mb", type=float, default=25.0)
@@ -37,7 +38,7 @@ args = p.parse_args()
 
 dist.init_process_group("tbccl", timeout=datetime.timedelta(seconds=args.timeout))
 rank = dist.get_rank()
-dev = torch.device(args.device)
+dev = torch.device(args.devices.split(",")[rank] if args.devices else args.device)
 log = lambda *a: print(f"rank {rank}:", *a, flush=True)  # noqa: E731
 stage = (lambda s: log("stage:", s)) if args.stages else (lambda s: None)
 

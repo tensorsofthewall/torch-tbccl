@@ -41,7 +41,7 @@ void CompletionWorker::run()
         state->wait();
         if (state->trace)
         {
-            state->trace->complete_ns.store(trace_now_ns());
+            state->trace->stamp_complete();
             if (state->has_error()) state->trace->error.store(1);
         }
         if (state->has_error())

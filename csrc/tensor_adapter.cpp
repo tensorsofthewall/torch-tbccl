@@ -16,7 +16,7 @@ tbccl::DataType to_tbccl_dtype(at::ScalarType type)
     case at::kFloat: return tbccl::DataType::Float32;
     default:
         TORCH_CHECK_NOT_IMPLEMENTED(
-            false, "torch-tbccl: unsupported operation: dtype ", type, " (Phase 42 supports torch.float32 only)");
+            false, "torch-tbccl: unsupported operation: dtype ", type, " (reductions support torch.float32 only)");
     }
 }
 
@@ -26,7 +26,7 @@ tbccl::ReduceOp to_tbccl_reduce_op(const c10d::ReduceOp &op)
     {
     case c10d::ReduceOp::SUM: return tbccl::ReduceOp::Sum;
     default:
-        TORCH_CHECK_NOT_IMPLEMENTED(false, "torch-tbccl: unsupported operation: only ReduceOp.SUM is supported (Phase 42)");
+        TORCH_CHECK_NOT_IMPLEMENTED(false, "torch-tbccl: unsupported operation: only ReduceOp.SUM is supported");
     }
 }
 

@@ -43,7 +43,7 @@ ProcessGroupTBCCL::ProcessGroupTBCCL(
     : c10d::Backend(rank, world_size), store_(store), timeout_(timeout)
 {
     // Fail at creation, not at the first collective.
-    TORCH_CHECK_NOT_IMPLEMENTED(world_size == 2, "torch-tbccl Phase 42 supports world_size=2 only (got ", world_size, ")");
+    TORCH_CHECK_NOT_IMPLEMENTED(world_size == 2, "torch-tbccl supports world_size=2 only (got ", world_size, ")");
     TORCH_CHECK_VALUE(rank >= 0 && rank < world_size, "torch-tbccl: invalid argument: rank ", rank, " outside [0, ", world_size, ")");
     TORCH_CHECK_VALUE(store_ != nullptr, "torch-tbccl: invalid argument: store is null");
 

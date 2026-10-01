@@ -79,6 +79,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
     m.def("compiled_features", &compiled_features, "Devices this build can serve");
     m.def("trace_enabled", &torch_tbccl::trace_enabled, "Whether TORCH_TBCCL_TRACE recording is on");
     m.def("trace_set_enabled", &torch_tbccl::trace_set_enabled, py::arg("on"));
+    m.def("trace_now_ns", &torch_tbccl::trace_now_ns, "Clock used for trace stamps (monotonic ns, this process)");
     m.def("trace_reset", &torch_tbccl::trace_reset, "Drop recorded events (call with no collectives in flight)");
     m.def("trace_events", &trace_events, "Recorded per-collective timeline (this process's monotonic ns)");
     // GIL released: bootstrap blocks on the Store / network.

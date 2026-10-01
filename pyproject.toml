@@ -1,0 +1,28 @@
+[build-system]
+# torch is needed at build time (headers + cpp_extension), so build with
+# --no-build-isolation (uv: see [tool.uv] below).
+requires = ["setuptools>=70", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "torch-tbccl"
+dynamic = ["version"]
+description = "Out-of-tree PyTorch distributed backend ('tbccl') over an installed TBCCL runtime"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["torch"]
+
+[project.optional-dependencies]
+test = ["pytest", "numpy"]
+
+[tool.setuptools]
+packages = ["torch_tbccl"]
+
+[tool.setuptools.dynamic]
+version = { attr = "torch_tbccl._version.__version__" }
+
+[tool.uv]
+no-build-isolation-package = ["torch-tbccl"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

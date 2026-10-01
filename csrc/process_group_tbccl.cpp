@@ -3,6 +3,7 @@
 #include "bootstrap.hpp"
 #include "errors.hpp"
 #include "tensor_adapter.hpp"
+#include "trace.hpp"
 #include "work_tbccl.hpp"
 
 #include <c10/util/Exception.h>
@@ -23,6 +24,13 @@ void ensure_cuda_support()
     static std::once_flag once;
     std::call_once(once, [] { tbccl::register_cuda_support(); });
 #endif
+}
+
+std::shared_ptr<TraceRecord> begin_trace(const char *op, const at::Tensor &t, std::uint64_t entry_ns)
+{
+    auto r = trace_begin(op, static_cast<std::uint64_t>(t.nbytes()), t.device().str());
+    if (r) r->entry_ns = entry_ns;
+    return r;
 }
 } // namespace
 
@@ -78,6 +86,7 @@ void ProcessGroupTBCCL::shutdown()
 c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
     std::vector<at::Tensor> &tensors, const c10d::AllreduceOptions &opts)
 {
+    const auto entry_ns = trace_enabled() ? trace_now_ns() : 0;
     TORCH_CHECK_VALUE(
         tensors.size() == 1,
         "torch-tbccl: invalid argument: allreduce takes exactly one tensor (got ", tensors.size(), ")");
@@ -89,6 +98,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
     auto state = std::make_shared<WorkState>();
     state->tensors = tensors;
     state->op_name = "allreduce";
+    state->trace = begin_trace("allreduce", tensors[0], entry_ns);
     state->future = c10::make_intrusive<c10::ivalue::Future>(c10::ListType::create(c10::TensorType::get()));
 
     if (buf.count == 0)
@@ -104,7 +114,9 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
     try
     {
         // In place: same BufferView as send and receive; no intermediate tensor.
+        if (state->trace) state->trace->before_submit_ns = trace_now_ns();
         state->work = comm_->all_reduce(buf.view, buf.view, buf.count, buf.datatype, op, buf.context);
+        if (state->trace) state->trace->return_ns = trace_now_ns();
     }
     catch (const std::runtime_error &e)
     {
@@ -125,6 +137,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::finish(
 c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::broadcast(
     std::vector<at::Tensor> &tensors, const c10d::BroadcastOptions &opts)
 {
+    const auto entry_ns = trace_enabled() ? trace_now_ns() : 0;
     TORCH_CHECK_VALUE(
         tensors.size() == 1,
         "torch-tbccl: invalid argument: broadcast takes exactly one tensor (got ", tensors.size(), ")");
@@ -138,6 +151,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::broadcast(
     auto state = std::make_shared<WorkState>();
     state->tensors = tensors;
     state->op_name = "broadcast";
+    state->trace = begin_trace("broadcast", tensors[0], entry_ns);
     state->future = c10::make_intrusive<c10::ivalue::Future>(c10::ListType::create(c10::TensorType::get()));
     if (buf.view.bytes == 0) return finish(state, c10d::OpType::BROADCAST);
 
@@ -145,7 +159,9 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::broadcast(
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
+        if (state->trace) state->trace->before_submit_ns = trace_now_ns();
         state->work = comm_->broadcast(buf.view, static_cast<std::size_t>(opts.rootRank), buf.context);
+        if (state->trace) state->trace->return_ns = trace_now_ns();
     }
     catch (const std::runtime_error &e)
     {
@@ -160,6 +176,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather(
     std::vector<at::Tensor> &inputTensors,
     const c10d::AllgatherOptions &)
 {
+    const auto entry_ns = trace_enabled() ? trace_now_ns() : 0;
     TORCH_CHECK_VALUE(
         inputTensors.size() == 1 && outputTensors.size() == 1,
         "torch-tbccl: invalid argument: allgather takes one input tensor and one output list (got ",
@@ -186,6 +203,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather(
     state->tensors = outs;
     state->retained = {input};
     state->op_name = "allgather";
+    state->trace = begin_trace("allgather", input, entry_ns);
     state->future = c10::make_intrusive<c10::ivalue::Future>(c10::ListType::create(c10::TensorType::get()));
     if (in_buf.view.bytes == 0) return finish(state, c10d::OpType::ALLGATHER);
 
@@ -193,7 +211,9 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather(
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
+        if (state->trace) state->trace->before_submit_ns = trace_now_ns();
         state->work = comm_->all_gather(in_buf.view, views, in_buf.context);
+        if (state->trace) state->trace->return_ns = trace_now_ns();
     }
     catch (const std::runtime_error &e)
     {

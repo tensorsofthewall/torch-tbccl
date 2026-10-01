@@ -30,6 +30,11 @@ std::exception_ptr WorkTBCCL::exception() const
 
 bool WorkTBCCL::wait(std::chrono::milliseconds timeout)
 {
+    if (state_->trace)
+    {
+        std::uint64_t zero = 0;
+        state_->trace->wait_entry_ns.compare_exchange_strong(zero, trace_now_ns());
+    }
     if (timeout.count() == 0)
     {
         state_->wait();
@@ -48,6 +53,7 @@ bool WorkTBCCL::wait(std::chrono::milliseconds timeout)
             if (nap < std::chrono::microseconds(1000)) nap *= 2;
         }
     }
+    if (state_->trace) state_->trace->wait_exit_ns.store(trace_now_ns());
     if (state_->has_error()) throw_tbccl_error(state_->op_name, state_->error());
     return true;
 }

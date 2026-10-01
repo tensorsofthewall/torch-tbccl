@@ -4,6 +4,8 @@
 #include <ATen/core/ivalue_inl.h>
 #include <torch/csrc/distributed/c10d/Work.hpp>
 
+#include "trace.hpp"
+
 #include <tbccl/work.hpp>
 
 #include <chrono>
@@ -26,6 +28,7 @@ struct WorkState
     std::optional<tbccl::Work> work;
     c10::intrusive_ptr<c10::ivalue::Future> future;
     std::string op_name;
+    std::shared_ptr<TraceRecord> trace; // null unless TORCH_TBCCL_TRACE
 
     bool is_completed() const { return !work || work->is_completed(); }
     bool has_error() const { return work && work->has_error(); }

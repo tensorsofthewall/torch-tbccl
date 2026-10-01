@@ -39,6 +39,11 @@ void CompletionWorker::run()
             queue_.pop_front();
         }
         state->wait();
+        if (state->trace)
+        {
+            state->trace->complete_ns.store(trace_now_ns());
+            if (state->has_error()) state->trace->error.store(1);
+        }
         if (state->has_error())
             state->future->setError(std::make_exception_ptr(std::runtime_error(
                 "torch-tbccl: " + state->op_name + " failed: " + state->error())));

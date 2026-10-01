@@ -14,7 +14,8 @@ namespace torch_tbccl
 
 // c10d backend adapting torch.distributed onto an installed TBCCL
 // Communicator. world_size == 2 only. No collectives are
-// implemented yet; every inherited collective throws "does not support X".
+// implemented except allreduce; every other inherited collective throws
+// "does not support X".
 class ProcessGroupTBCCL : public c10d::Backend
 {
 public:
@@ -36,11 +37,19 @@ public:
     std::chrono::milliseconds timeout() const { return timeout_; }
     bool is_shutdown() const;
 
+    // CPU path: in-place Float32 SUM over exactly one dense,
+    // contiguous tensor. Currently BLOCKING regardless of opts.asyncOp:
+    // the collective has completed when the returned Work is handed back.
+    c10::intrusive_ptr<c10d::Work> allreduce(
+        std::vector<at::Tensor> &tensors,
+        const c10d::AllreduceOptions &opts = c10d::AllreduceOptions()) override;
+
 private:
     c10::intrusive_ptr<c10d::Store> store_;
     std::chrono::milliseconds timeout_;
     mutable std::mutex mutex_;
     std::unique_ptr<tbccl::Communicator> comm_;
+    std::mutex collective_mutex_; // TBCCL runs one collective at a time
 };
 
 } // namespace torch_tbccl

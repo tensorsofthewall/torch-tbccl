@@ -36,6 +36,11 @@ def trace_reset() -> None:
     _C.trace_reset()
 
 
+def trace_now_ns() -> int:
+    """The clock trace events are stamped with, for correlating application-side events."""
+    return _C.trace_now_ns()
+
+
 def trace_events() -> list:
     """Per-collective events (dicts) with this process's monotonic nanosecond stamps; never compare
     stamps across machines. complete_ns/wait_* are 0 until they happen."""
@@ -63,4 +68,5 @@ __all__ = [
     "trace_set_enabled",
     "trace_reset",
     "trace_events",
+    "trace_now_ns",
 ]

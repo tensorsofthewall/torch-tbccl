@@ -6,12 +6,16 @@ Modes (--mode):
                different inputs per rank, DDP gradients vs reference mean-of-local-gradients, updated
                parameters vs reference; with --bucket-cap-mb small this also exercises >= 2 buckets
   buffers      registered buffer that differs between ranks; forward must propagate rank 0's
+  (--layers N --width W selects a deep Linear stack instead of the 3-layer MLP; with --json it records, per
+   step, application-side stamps plus every gradient-ready time, for examples/analyze_ddp_trace.py)
   count-mismatch  rank 1 has an extra parameter; DDP construction must fail on BOTH ranks, not hang
   shape-mismatch  rank 1 has a differently shaped parameter; PyTorch verifies shapes against rank 0's
                   broadcast metadata, so the NON-root rank must fail promptly (rank 0 may construct)
 Launch like cross_host_allreduce.py (MASTER_ADDR is the rank-0 host).
 """
 import argparse
+import faulthandler
+import os
 import datetime
 import json
 import sys
@@ -32,9 +36,14 @@ p.add_argument("--steps", type=int, default=20)
 p.add_argument("--bucket-cap-mb", type=float, default=25.0)
 p.add_argument("--hidden", type=int, default=128)
 p.add_argument("--timeout", type=float, default=60.0)
+p.add_argument("--layers", type=int, default=0, help="deep Linear stack (bucket matrix model); 0 = small MLP")
+p.add_argument("--width", type=int, default=512)
+p.add_argument("--warmup", type=int, default=0, help="leading steps excluded from the analysis")
 p.add_argument("--stages", action="store_true", help="print bring-up stage markers (cross-host order)")
 p.add_argument("--json", default=None, help="write the trace + per-step summary here (needs TORCH_TBCCL_TRACE=1)")
 args = p.parse_args()
+if os.environ.get("DDP_HANG_DUMP"):  # debugging aid: dump all Python stacks if still running after N seconds
+    faulthandler.dump_traceback_later(float(os.environ["DDP_HANG_DUMP"]), exit=True)
 
 dist.init_process_group("tbccl", timeout=datetime.timedelta(seconds=args.timeout))
 rank = dist.get_rank()
@@ -58,13 +67,29 @@ class MLP(nn.Module):
         return y + 0 * self.scale.sum()
 
 
+class DeepMLP(nn.Module):
+    """Synthetic bucket-matrix model: `layers` Linear(width, width) (~width^2*4 bytes of gradient each)."""
+
+    def __init__(self):
+        super().__init__()
+        self.layers = nn.ModuleList(nn.Linear(args.width, args.width) for _ in range(args.layers))
+        self.register_buffer("scale", torch.ones(4))
+
+    def forward(self, x):
+        for layer in self.layers:
+            x = torch.tanh(layer(x))
+        return x + 0 * self.scale.sum()
+
+
 def make(seed, **kw):
     torch.manual_seed(seed)
-    return MLP(args.hidden, **kw)
+    return DeepMLP() if args.layers else MLP(args.hidden, **kw)
 
 
 def batch(step, r):
     g = torch.Generator().manual_seed(5000 + step * 10 + r)
+    if args.layers:
+        return torch.randn(64, args.width, generator=g), torch.randn(64, args.width, generator=g)
     return torch.randn(32, 64, generator=g), torch.randn(32, 10, generator=g)
 
 
@@ -125,16 +150,26 @@ opt = torch.optim.SGD(ddp.parameters(), lr=0.05)
 ref_opt = torch.optim.SGD(ref.parameters(), lr=0.05)
 max_grad_err = max_param_err = 0.0
 step_ms = []
+now = torch_tbccl.trace_now_ns
+ready = []   # (step, param index, ns): when each gradient was accumulated (diagnostic; no synchronization)
+steps_rec = []
+cur_step = [0]
+for i, q in enumerate(model.parameters()):
+    q.register_post_accumulate_grad_hook(lambda _q, i=i: ready.append((cur_step[0], i, now())))
 for step in range(args.steps):
     if step == 0:
         stage("forward")
     t0 = time.monotonic()
+    cur_step[0] = step
     x, y = batch(step, rank)
     opt.zero_grad()
+    t_start = now()
     loss = nn.functional.mse_loss(ddp(x.to(dev)), y.to(dev))
+    t_fwd = now()
     if step == 0:
         stage("backward")
     loss.backward()
+    t_bwd = now()
     if step == 0:
         stage("optimizer step")
     got = [q.grad.detach().cpu().clone() for q in model.parameters()]
@@ -142,6 +177,7 @@ for step in range(args.steps):
     if dev.type == "cuda":
         torch.cuda.synchronize()
     step_ms.append((time.monotonic() - t0) * 1e3)
+    steps_rec.append({"step": step, "start_ns": t_start, "fwd_end_ns": t_fwd, "bwd_end_ns": t_bwd, "end_ns": now()})
 
     # reference: mean of the two ranks' local gradients, computed locally on CPU
     g0, g1 = local_grads(ref, step, 0), local_grads(ref, step, 1)
@@ -165,7 +201,9 @@ if torch_tbccl.trace_enabled():
     log("collectives recorded:", {k: sum(e["op"] == k for e in ev) for k in sorted({e["op"] for e in ev})})
     if args.json:
         with open(args.json, "w") as fh:
-            json.dump({"rank": rank, "bucket_cap_mb": args.bucket_cap_mb, "step_ms": step_ms, "events": ev}, fh)
+            json.dump({"rank": rank, "device": str(dev), "bucket_cap_mb": args.bucket_cap_mb, "layers": args.layers,
+                       "width": args.width, "warmup": args.warmup, "step_ms": step_ms, "steps": steps_rec,
+                       "grad_ready": ready, "events": ev}, fh)
 
 dist.destroy_process_group()
 sys.exit(1 if bad else 0)

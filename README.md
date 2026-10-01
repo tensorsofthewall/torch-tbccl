@@ -1,6 +1,6 @@
 # torch-tbccl
 
-> **Experimental. N=2, Float32 SUM AllReduce only.**
+> **Experimental. complete. N=2, Float32 SUM AllReduce only.**
 > Not NCCL-feature-parity.
 
 An out-of-tree PyTorch distributed backend (`"tbccl"`) that adapts
@@ -68,3 +68,6 @@ timeout bounds the exchange and TBCCL connection setup.
 ## Known limitations
 World size 2 only; Float32 SUM AllReduce only; no DDP/FSDP; no MPS.
 See `docs/architecture.md` and `docs/pytorch_api_audit.md`.
+
+results and the full report:
+Two-host example: `examples/cross_host_allreduce.py`.

@@ -8,15 +8,25 @@ import pytest
 HERE = os.path.dirname(os.path.abspath(__file__))
 
 
+def _bindable(port):
+    with socket.socket() as s:
+        try:
+            s.bind(("127.0.0.1", port))
+            return True
+        except OSError:
+            return False
+
+
 def free_ports(n):
-    socks = [socket.socket() for _ in range(n)]
-    try:
-        for s in socks:
+    # Endpoint ports also need their TBCCL data port (+1000) free.
+    out = []
+    while len(out) < n:
+        with socket.socket() as s:
             s.bind(("127.0.0.1", 0))
-        return [s.getsockname()[1] for s in socks]
-    finally:
-        for s in socks:
-            s.close()
+            p = s.getsockname()[1]
+        if p + 1000 < 65536 and _bindable(p + 1000) and p not in out:
+            out.append(p)
+    return out
 
 
 @pytest.fixture

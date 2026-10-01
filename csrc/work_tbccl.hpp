@@ -20,7 +20,8 @@ namespace torch_tbccl
 // even if the user drops both the tensor and the Work handle.
 struct WorkState
 {
-    std::vector<at::Tensor> tensors;
+    std::vector<at::Tensor> tensors;   // the result list (what Work::result()/Future yield)
+    std::vector<at::Tensor> retained;  // extra keep-alive (e.g. the allgather input)
     // Empty = trivially complete no-op (e.g. zero-element tensor).
     std::optional<tbccl::Work> work;
     c10::intrusive_ptr<c10::ivalue::Future> future;

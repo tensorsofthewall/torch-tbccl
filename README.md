@@ -15,10 +15,13 @@ PyTorch -> torch-tbccl -> installed libtbccl -> TBCCL transport/collectives
 - Done: package builds against an installed TBCCL; `import torch_tbccl`
   registers the `"tbccl"` backend (idempotent); `init_process_group("tbccl")`
   rendezvouses through the c10d Store and creates a TBCCL `Communicator`.
-- Done: blocking CPU Float32 SUM `all_reduce` (one dense contiguous tensor,
-  in place, no copies). `async_op=True` is accepted but currently also
-  blocks; true asynchronous `Work` is the next step.
-- Not yet: asynchronous Work, CUDA tensors, other collectives.
+- Done: CPU Float32 SUM `all_reduce` (one dense contiguous tensor, in place,
+  no copies) with real asynchronous `Work` (`async_op=True` returns after
+  submission): `is_completed()`, `wait()` (repeatable; `wait(timeout)` is a
+  bounded adapter-side wait that does not cancel the TBCCL operation),
+  `get_future()` (completed by one persistent completion thread per group),
+  tensors retained until the operation finishes.
+- Not yet: CUDA tensors, other collectives.
 - Rejected with a clear error: other dtypes/ops, non-contiguous, sparse,
   multiple tensors. Zero-element tensors are a no-op on both ranks.
 

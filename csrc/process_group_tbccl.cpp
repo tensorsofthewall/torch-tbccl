@@ -35,6 +35,7 @@ ProcessGroupTBCCL::ProcessGroupTBCCL(
     {
         TORCH_CHECK(false, "torch-tbccl: communicator failure: could not create TBCCL communicator: ", e.what());
     }
+    completion_ = std::make_unique<CompletionWorker>();
 }
 
 ProcessGroupTBCCL::~ProcessGroupTBCCL()
@@ -44,12 +45,18 @@ ProcessGroupTBCCL::~ProcessGroupTBCCL()
 
 void ProcessGroupTBCCL::shutdown()
 {
+    // Order: reject new submissions, destroy the communicator (TBCCL drains
+    // its queue, so every pending Work settles), then join the completion
+    // worker, which finishes the remaining Futures.
     std::unique_ptr<tbccl::Communicator> doomed;
+    std::unique_ptr<CompletionWorker> worker;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         doomed = std::move(comm_);
+        worker = std::move(completion_);
     }
-    doomed.reset(); // joins TBCCL's workers outside the lock
+    doomed.reset();
+    worker.reset();
 }
 
 c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
@@ -63,30 +70,32 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
     const auto op = to_tbccl_reduce_op(opts.reduceOp);
     const auto buf = to_tbccl_buffer(tensors[0]);
 
-    // Zero elements: nothing to reduce. Both ranks see the same count, so
-    // skipping the exchange on both sides stays consistent.
-    if (buf.count == 0) return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::ALLREDUCE, tensors);
+    auto state = std::make_shared<WorkState>();
+    state->tensors = tensors;
+    state->op_name = "allreduce";
+    state->future = c10::make_intrusive<c10::ivalue::Future>(c10::ListType::create(c10::TensorType::get()));
 
-    std::lock_guard<std::mutex> serial(collective_mutex_);
-    tbccl::Communicator *comm = nullptr;
+    if (buf.count == 0)
     {
-        std::lock_guard<std::mutex> lock(mutex_);
-        comm = comm_.get();
+        // Zero elements: nothing to reduce. Both ranks see the same count,
+        // so skipping the exchange on both sides stays consistent.
+        state->future->markCompleted(c10::IValue(state->tensors));
+        return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::ALLREDUCE, state);
     }
-    TORCH_CHECK(comm != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
 
+    std::lock_guard<std::mutex> lock(mutex_);
+    TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
         // In place: same BufferView as send and receive; no intermediate tensor.
-        auto work = comm->all_reduce(buf.view, buf.view, buf.count, buf.datatype, op, buf.context);
-        work.wait();
-        if (work.has_error()) throw_tbccl_error("allreduce", work.error());
+        state->work = comm_->all_reduce(buf.view, buf.view, buf.count, buf.datatype, op, buf.context);
     }
     catch (const std::runtime_error &e)
     {
         throw_tbccl_error("allreduce", e.what());
     }
-    return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::ALLREDUCE, tensors);
+    completion_->enqueue(state);
+    return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::ALLREDUCE, state);
 }
 
 bool ProcessGroupTBCCL::is_shutdown() const

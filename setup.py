@@ -56,7 +56,7 @@ ext = CppExtension(
     include_dirs=[inc],
     extra_objects=[lib],
     define_macros=[("TORCH_TBCCL_LINKED_TBCCL_VERSION", f'"{tbccl_version}"')],
-    extra_compile_args=["-O2", "-Wall", "-Wextra"],
+    extra_compile_args=["-O2", "-Wall"],
     extra_link_args=["-pthread"],
 )
 

@@ -25,7 +25,11 @@ pybind11::dict compiled_features()
 {
     pybind11::dict d;
     d["cpu"] = tbccl::memory_kind_registered(tbccl::MemoryKind::Host);
-    d["cuda"] = false; // enabled once the installed tbccl_cuda component is consumed
+#ifdef TORCH_TBCCL_WITH_CUDA
+    d["cuda"] = true;
+#else
+    d["cuda"] = false;
+#endif
     d["mps"] = false;
     return d;
 }

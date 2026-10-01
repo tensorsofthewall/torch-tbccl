@@ -44,20 +44,71 @@ def find_tbccl():
         m = re.search(r'set\(PACKAGE_VERSION "([^"]+)"\)', open(f).read())
         if m:
             version = m.group(1)
-    return root, inc, libs[0], version
+    cuda_lib = None
+    for libdir in ("lib", "lib64"):
+        p = os.path.join(root, libdir, "libtbccl_cuda.a")
+        if os.path.isfile(p):
+            cuda_lib = p
+    return root, inc, libs[0], version, cuda_lib
 
 
-root, inc, lib, tbccl_version = find_tbccl()
+def find_cudart():
+    """Headers from a CUDA toolkit (CUDA_HOME); the runtime library from the copy torch
+    itself ships/loads when present, so there is exactly one cudart in the process."""
+    import torch
+    from torch.utils.cpp_extension import CUDA_HOME
+
+    if torch.version.cuda is None:
+        return None
+    site = os.path.dirname(os.path.dirname(torch.__file__))
+    pip_inc = pip_lib = None
+    for inc in sorted(glob.glob(os.path.join(site, "nvidia", "cu*", "include"))):
+        libdir = os.path.join(os.path.dirname(inc), "lib")
+        if glob.glob(os.path.join(libdir, "libcudart.so*")):
+            pip_inc, pip_lib = inc, libdir
+    inc = None
+    for cand in (os.path.join(CUDA_HOME, "include") if CUDA_HOME else None, pip_inc):
+        if cand and os.path.isfile(os.path.join(cand, "crt", "host_defines.h")):
+            inc = cand
+            break
+    libdir = pip_lib or (os.path.join(CUDA_HOME, "lib64") if CUDA_HOME else None)
+    return (inc, libdir) if inc and libdir else None
+
+
+root, inc, lib, tbccl_version, cuda_lib = find_tbccl()
 print(f"torch-tbccl: using TBCCL {tbccl_version} from {root} ({os.path.basename(lib)})")
+
+include_dirs = [inc]
+library_dirs = []
+libraries = []
+objects = [lib]
+macros = [("TORCH_TBCCL_LINKED_TBCCL_VERSION", f'"{tbccl_version}"')]
+link_args = ["-pthread"]
+
+cudart = find_cudart() if cuda_lib else None
+if cuda_lib and cudart:
+    cuda_inc, cuda_libdir = cudart
+    print(f"torch-tbccl: CUDA enabled (tbccl_cuda + cudart from {cuda_libdir})")
+    include_dirs.append(cuda_inc)
+    library_dirs.append(cuda_libdir)
+    cudart_so = sorted(glob.glob(os.path.join(cuda_libdir, "libcudart.so.*")))[0]
+    objects = [cuda_lib, lib]  # tbccl_cuda depends on tbccl
+    libraries += ["c10_cuda", "torch_cuda"]
+    link_args += [f"-Wl,-rpath,{cuda_libdir}", cudart_so]
+    macros.append(("TORCH_TBCCL_WITH_CUDA", "1"))
+else:
+    print("torch-tbccl: CUDA disabled (needs TBCCL's tbccl_cuda component and a CUDA-enabled torch)")
 
 ext = CppExtension(
     name="torch_tbccl._C",
     sources=sorted(glob.glob(os.path.join("csrc", "*.cpp"))),
-    include_dirs=[inc],
-    extra_objects=[lib],
-    define_macros=[("TORCH_TBCCL_LINKED_TBCCL_VERSION", f'"{tbccl_version}"')],
+    include_dirs=include_dirs,
+    library_dirs=library_dirs,
+    libraries=libraries,
+    extra_objects=objects,
+    define_macros=macros,
     extra_compile_args=["-O2", "-Wall"],
-    extra_link_args=["-pthread"],
+    extra_link_args=link_args,
 )
 
 setup(ext_modules=[ext], cmdclass={"build_ext": BuildExtension})

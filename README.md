@@ -21,7 +21,13 @@ PyTorch -> torch-tbccl -> installed libtbccl -> TBCCL transport/collectives
   bounded adapter-side wait that does not cancel the TBCCL operation),
   `get_future()` (completed by one persistent completion thread per group),
   tensors retained until the operation finishes.
-- Not yet: CUDA tensors, other collectives.
+- Done: CUDA tensors (Linux build with TBCCL's `tbccl_cuda` component):
+  a CUDA tensor maps to a `Cuda` BufferView and PyTorch's *current* stream at
+  submission is passed to TBCCL as the producer stream, so no explicit
+  synchronization is needed between producing a tensor and `all_reduce`.
+  CUDA and CPU ranks can be mixed. The first CUDA collective in a process
+  pays one-time TBCCL setup.
+- Not yet: other collectives, MPS.
 - Rejected with a clear error: other dtypes/ops, non-contiguous, sparse,
   multiple tensors. Zero-element tensors are a no-op on both ranks.
 
@@ -38,7 +44,7 @@ work.wait()
 
 | | Linux | macOS |
 |---|---|---|
-| Devices | cpu, cuda | cpu |
+| Devices | cpu, cuda (needs `tbccl_cuda` in the TBCCL prefix and a CUDA torch) | cpu |
 
 ## Install (development)
 Requires an installed TBCCL prefix (built with

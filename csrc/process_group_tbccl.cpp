@@ -7,10 +7,24 @@
 
 #include <c10/util/Exception.h>
 
+#include <tbccl/cuda_support.hpp>
+
 #include <exception>
+#include <mutex>
 
 namespace torch_tbccl
 {
+
+namespace
+{
+void ensure_cuda_support()
+{
+#ifdef TORCH_TBCCL_WITH_CUDA
+    static std::once_flag once;
+    std::call_once(once, [] { tbccl::register_cuda_support(); });
+#endif
+}
+} // namespace
 
 ProcessGroupTBCCL::ProcessGroupTBCCL(
     const c10::intrusive_ptr<c10d::Store> &store,
@@ -23,6 +37,8 @@ ProcessGroupTBCCL::ProcessGroupTBCCL(
     TORCH_CHECK_NOT_IMPLEMENTED(world_size == 2, "torch-tbccl Phase 42 supports world_size=2 only (got ", world_size, ")");
     TORCH_CHECK_VALUE(rank >= 0 && rank < world_size, "torch-tbccl: invalid argument: rank ", rank, " outside [0, ", world_size, ")");
     TORCH_CHECK_VALUE(store_ != nullptr, "torch-tbccl: invalid argument: store is null");
+
+    ensure_cuda_support();
 
     // Validate locally before touching the Store or the network.
     const auto local = local_endpoint_from_env();

@@ -2,6 +2,10 @@
 
 #include <c10/util/Exception.h>
 
+#ifdef TORCH_TBCCL_WITH_CUDA
+#include <c10/cuda/CUDAStream.h>
+#endif
+
 namespace torch_tbccl
 {
 
@@ -33,9 +37,15 @@ TbcclBuffer to_tbccl_buffer(const at::Tensor &t)
         t.layout() == at::kStrided && !t.is_quantized(),
         "torch-tbccl: unsupported operation: only dense strided tensors are supported (got layout ", t.layout(),
         t.is_quantized() ? ", quantized" : "", ")");
+    const bool is_cuda = t.device().type() == at::kCUDA;
+#ifdef TORCH_TBCCL_WITH_CUDA
+    const bool device_ok = t.device().type() == at::kCPU || is_cuda;
+#else
+    const bool device_ok = t.device().type() == at::kCPU;
+#endif
     TORCH_CHECK_NOT_IMPLEMENTED(
-        t.device().type() == at::kCPU,
-        "torch-tbccl: unsupported operation: device ", t.device(), " (CPU tensors only in this build step)");
+        device_ok, "torch-tbccl: unsupported operation: device ", t.device(),
+        is_cuda ? " (this build has no CUDA support)" : " (supported: CPU, CUDA)");
 
     TbcclBuffer out;
     out.datatype = to_tbccl_dtype(t.scalar_type());
@@ -44,11 +54,24 @@ TbcclBuffer to_tbccl_buffer(const at::Tensor &t)
         t.is_contiguous(), "torch-tbccl: invalid argument: tensor must be contiguous (no implicit copy is made)");
 
     out.count = static_cast<std::size_t>(t.numel());
-    out.view.memory_kind = tbccl::MemoryKind::Host;
     out.view.data = t.numel() == 0 ? nullptr : t.data_ptr();
     out.view.bytes = static_cast<std::size_t>(t.nbytes());
-    out.view.device_ordinal = -1;
-    out.context = tbccl::ExecutionContext{tbccl::ExecutionContextKind::Host, nullptr};
+    if (!is_cuda)
+    {
+        out.view.memory_kind = tbccl::MemoryKind::Host;
+        out.view.device_ordinal = -1;
+        out.context = tbccl::ExecutionContext{tbccl::ExecutionContextKind::Host, nullptr};
+        return out;
+    }
+#ifdef TORCH_TBCCL_WITH_CUDA
+    // The producer stream is whatever PyTorch's current stream for this device is at submission;
+    // TBCCL owns the cross-stream event dependency.
+    out.view.memory_kind = tbccl::MemoryKind::Cuda;
+    out.view.device_ordinal = t.device().index();
+    out.context = tbccl::ExecutionContext{
+        tbccl::ExecutionContextKind::CudaStream,
+        reinterpret_cast<void *>(c10::cuda::getCurrentCUDAStream(t.device().index()).stream())};
+#endif
     return out;
 }
 

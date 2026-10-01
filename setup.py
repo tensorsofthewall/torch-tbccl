@@ -99,6 +99,12 @@ if cuda_lib and cudart:
 else:
     print("torch-tbccl: CUDA disabled (needs TBCCL's tbccl_cuda component and a CUDA-enabled torch)")
 
+sanitize = os.environ.get("TORCH_TBCCL_SANITIZE")  # e.g. "address,undefined" or "thread"
+compile_args = ["-O1", "-g", "-fno-omit-frame-pointer", f"-fsanitize={sanitize}"] if sanitize else ["-O2"]
+if sanitize:
+    link_args.append(f"-fsanitize={sanitize}")
+    print(f"torch-tbccl: sanitizer build ({sanitize})")
+
 ext = CppExtension(
     name="torch_tbccl._C",
     sources=sorted(glob.glob(os.path.join("csrc", "*.cpp"))),
@@ -107,7 +113,7 @@ ext = CppExtension(
     libraries=libraries,
     extra_objects=objects,
     define_macros=macros,
-    extra_compile_args=["-O2", "-Wall"],
+    extra_compile_args=compile_args + ["-Wall"],
     extra_link_args=link_args,
 )
 

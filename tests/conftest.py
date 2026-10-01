@@ -33,7 +33,7 @@ def free_ports(n):
 def run_two_ranks():
     """Run a worker script as two processes on loopback; return their (rc, output)."""
 
-    def run(script, timeout=60, extra_env=None):
+    def run(script, timeout=60, extra_env=None, args=()):
         master, p0, p1 = free_ports(3)
         procs = []
         for rank, port in enumerate((p0, p1)):
@@ -48,7 +48,7 @@ def run_two_ranks():
             env.update(extra_env or {})
             procs.append(
                 subprocess.Popen(
-                    [sys.executable, os.path.join(HERE, script)],
+                    [sys.executable, os.path.join(HERE, script), *args],
                     env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                 )
             )

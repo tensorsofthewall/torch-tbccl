@@ -1,6 +1,6 @@
 # torch-tbccl
 
-> **Experimental. Phase 42 complete. N=2, Float32 SUM AllReduce only.**
+> **Experimental. Phase 43 complete: world_size=2; Float32 SUM AllReduce, byte-generic Broadcast/AllGather; experimental DDP.**
 > Not NCCL-feature-parity.
 
 An out-of-tree PyTorch distributed backend (`"tbccl"`) that adapts
@@ -27,7 +27,14 @@ PyTorch -> torch-tbccl -> installed libtbccl -> TBCCL transport/collectives
   synchronization is needed between producing a tensor and `all_reduce`.
   CUDA and CPU ranks can be mixed. The first CUDA collective in a process
   pays one-time TBCCL setup.
-- Not yet: other collectives, MPS.
+- Done (Phase 43): `broadcast` (any dense contiguous dtype, one tensor) and `allgather` (one input, `world_size`
+  outputs of equal size) on CPU and CUDA tensors, same `Work`/`Future` semantics as `all_reduce`.
+- Done (Phase 43, **experimental DDP**): `torch.nn.parallel.DistributedDataParallel` works with world_size=2,
+  Float32 gradient AllReduce, CPU<->CPU and Linux CUDA<->Mac CPU (both rank orders), including buffer sync and
+  gradient bucketing. Not supported: `find_unused_parameters=True`, other dtypes/ops for reductions, MPS, N>2,
+  fault recovery (no abort/cancel: a silent peer can block). This is not NCCL feature parity.
+- Opt-in diagnostics: `TORCH_TBCCL_TRACE=1` (per-collective timeline via `torch_tbccl.trace_events()`).
+- Not yet: other collectives (`barrier`, `reduce`, `all_gather_into_tensor`, ...), MPS.
 - Rejected with a clear error: other dtypes/ops, non-contiguous, sparse,
   multiple tensors. Zero-element tensors are a no-op on both ranks.
 
@@ -66,8 +73,9 @@ through the Store under `torch_tbccl/v1/endpoint/<rank>`; the PyTorch
 timeout bounds the exchange and TBCCL connection setup.
 
 ## Known limitations
-World size 2 only; Float32 SUM AllReduce only; no DDP/FSDP; no MPS.
+World size 2 only; reductions are Float32 SUM only; experimental DDP only (no FSDP); no MPS; no fault recovery.
 See `docs/architecture.md` and `docs/pytorch_api_audit.md`.
 
-Phase 42 results and the full report: `docs/phase42_report.md`, `docs/phase42_results.md`.
-Two-host example: `examples/cross_host_allreduce.py`.
+Phase 42/43 reports and results: `docs/phase42_report.md`, `docs/phase42_results.md`, `docs/phase43_report.md`,
+`docs/phase43_results.md`, `docs/phase43_ddp_api_audit.md`.
+Two-host examples: `examples/cross_host_allreduce.py`, `cross_host_collectives.py`, `real_link_overlap.py`, `ddp_train.py`.

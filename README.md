@@ -35,6 +35,8 @@ PyTorch -> torch-tbccl -> installed libtbccl -> TBCCL transport/collectives
   fault recovery (no abort/cancel: a silent peer can block). This is not NCCL feature parity.
 - Phase 44 (runtime-side, no adapter change): TBCCL >= `c7cac28` keeps CUDA pinned staging persistent per communicator, so CUDA collective submission
   no longer allocates payload-sized pinned memory (warm submit ~10-20 us at any size). Retained pinned memory = the largest transfer the communicator has seen.
+- Phase 45: `ProcessGroup` abort (`torch.distributed.distributed_c10d._abort_process_group()`) maps to TBCCL's communicator-wide abort: outstanding Works/Futures fail, later collectives raise,
+  and `destroy_process_group()` no longer hangs on a silent peer. `Work.wait(timeout)` stays non-destructive. No recovery/reconnect.
 - Opt-in diagnostics: `TORCH_TBCCL_TRACE=1` (per-collective timeline via `torch_tbccl.trace_events()`).
 - Not yet: other collectives (`barrier`, `reduce`, `all_gather_into_tensor`, ...), MPS.
 - Rejected with a clear error: other dtypes/ops, non-contiguous, sparse,
@@ -75,7 +77,7 @@ through the Store under `torch_tbccl/v1/endpoint/<rank>`; the PyTorch
 timeout bounds the exchange and TBCCL connection setup.
 
 ## Known limitations
-World size 2 only; reductions are Float32 SUM only; experimental DDP only (no FSDP); no MPS; no fault recovery.
+World size 2 only; reductions are Float32 SUM only; experimental DDP only (no FSDP); no MPS; no fault recovery (abort only).
 See `docs/architecture.md` and `docs/pytorch_api_audit.md`.
 
 Phase 42/43 reports and results: `docs/phase42_report.md`, `docs/phase42_results.md`, `docs/phase43_report.md`,

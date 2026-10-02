@@ -1,6 +1,6 @@
 # torch-tbccl
 
-> **Experimental. Phase 43 complete: world_size=2; Float32 SUM AllReduce, byte-generic Broadcast/AllGather; experimental DDP.**
+> **Experimental. Phase 44 complete (persistent CUDA staging in TBCCL); Phase 43: world_size=2; Float32 SUM AllReduce, byte-generic Broadcast/AllGather; experimental DDP.**
 > Not NCCL-feature-parity.
 
 An out-of-tree PyTorch distributed backend (`"tbccl"`) that adapts
@@ -33,6 +33,8 @@ PyTorch -> torch-tbccl -> installed libtbccl -> TBCCL transport/collectives
   Float32 gradient AllReduce, CPU<->CPU and Linux CUDA<->Mac CPU (both rank orders), including buffer sync and
   gradient bucketing. Not supported: `find_unused_parameters=True`, other dtypes/ops for reductions, MPS, N>2,
   fault recovery (no abort/cancel: a silent peer can block). This is not NCCL feature parity.
+- Phase 44 (runtime-side, no adapter change): TBCCL >= `c7cac28` keeps CUDA pinned staging persistent per communicator, so CUDA collective submission
+  no longer allocates payload-sized pinned memory (warm submit ~10-20 us at any size). Retained pinned memory = the largest transfer the communicator has seen.
 - Opt-in diagnostics: `TORCH_TBCCL_TRACE=1` (per-collective timeline via `torch_tbccl.trace_events()`).
 - Not yet: other collectives (`barrier`, `reduce`, `all_gather_into_tensor`, ...), MPS.
 - Rejected with a clear error: other dtypes/ops, non-contiguous, sparse,
@@ -77,5 +79,5 @@ World size 2 only; reductions are Float32 SUM only; experimental DDP only (no FS
 See `docs/architecture.md` and `docs/pytorch_api_audit.md`.
 
 Phase 42/43 reports and results: `docs/phase42_report.md`, `docs/phase42_results.md`, `docs/phase43_report.md`,
-`docs/phase43_results.md`, `docs/phase43_ddp_api_audit.md`.
+`docs/phase43_results.md`, `docs/phase43_ddp_api_audit.md`, `docs/phase44_report.md`, `docs/phase44_results.md`.
 Two-host examples: `examples/cross_host_allreduce.py`, `cross_host_collectives.py`, `real_link_overlap.py`, `ddp_train.py`.

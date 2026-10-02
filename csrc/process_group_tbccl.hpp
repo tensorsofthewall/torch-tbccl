@@ -63,7 +63,14 @@ public:
         std::vector<at::Tensor> &inputTensors,
         const c10d::AllgatherOptions &opts = c10d::AllgatherOptions()) override;
 
+    // Point-to-point (byte-generic, any dense contiguous dtype, exactly one tensor, the single peer rank). `tag` is accepted
+    // and ignored: transfers are matched by FIFO order per direction, as vLLM/PyTorch pipeline use requires. Do not
+    // interleave P2P with collectives on the same group from different threads (one ordered byte stream underneath).
+    c10::intrusive_ptr<c10d::Work> send(std::vector<at::Tensor> &tensors, int dstRank, int tag) override;
+    c10::intrusive_ptr<c10d::Work> recv(std::vector<at::Tensor> &tensors, int srcRank, int tag) override;
+
 private:
+    c10::intrusive_ptr<c10d::Work> p2p(std::vector<at::Tensor> &tensors, int peer, bool is_send);
     c10::intrusive_ptr<c10d::Work> finish(std::shared_ptr<WorkState> state, c10d::OpType op);
 
     c10::intrusive_ptr<c10d::Store> store_;

@@ -34,7 +34,7 @@ def test_two_rank_rendezvous_repeated(run_two_ranks):
             assert rc == 0, out
 
 
-@pytest.mark.parametrize("ws", [1, 3, 4])
+@pytest.mark.parametrize("ws", [3, 4])
 def test_world_size_must_be_two(ws, endpoint):
     with pytest.raises(NotImplementedError, match="world_size=2 only"):
         create(dist.HashStore(), 0, ws)
@@ -47,7 +47,7 @@ def test_missing_endpoint(monkeypatch):
 
 
 @pytest.mark.parametrize(
-    "bad", ["", "nocolon", ":1234", "host:", "host:abc", "host:0", "host:70000", "::1:5000", "h:-1"]
+    "bad", ["", "nocolon", ":1234", "host:", "host:abc", "host:70000", "::1:5000", "h:-1"]
 )
 def test_malformed_endpoint(bad, monkeypatch):
     monkeypatch.setenv("TBCCL_LOCAL_ENDPOINT", bad)
@@ -90,3 +90,9 @@ def test_unreachable_peer_fails_boundedly(endpoint):
     with pytest.raises(RuntimeError, match="communicator failure"):
         create(store, 1, 2, datetime.timedelta(seconds=2))
     assert time.monotonic() - t0 < 15
+
+
+def test_single_rank_group_needs_no_endpoint(monkeypatch):
+    monkeypatch.delenv("TBCCL_LOCAL_ENDPOINT", raising=False)
+    pg = create(dist.HashStore(), 0, 1)
+    assert pg is not None

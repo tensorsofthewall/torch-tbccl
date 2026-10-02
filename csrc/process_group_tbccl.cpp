@@ -71,9 +71,10 @@ ProcessGroupTBCCL::~ProcessGroupTBCCL()
 
 void ProcessGroupTBCCL::shutdown()
 {
-    // Order: reject new submissions, destroy the communicator (TBCCL drains
-    // its queue, so every pending Work settles), then join the completion
-    // worker, which finishes the remaining Futures.
+    // Order: reject new submissions, destroy the communicator (it aborts any
+    // still-outstanding operation, so a silent peer cannot block teardown and
+    // every pending Work settles), then join the completion worker, which
+    // finishes the remaining Futures.
     std::unique_ptr<tbccl::Communicator> doomed;
     std::unique_ptr<CompletionWorker> worker;
     {
@@ -127,6 +128,12 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
     }
     completion_->enqueue(state);
     return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::ALLREDUCE, state);
+}
+
+void ProcessGroupTBCCL::abort()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (comm_) comm_->abort("ProcessGroup abort");
 }
 
 c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::finish(

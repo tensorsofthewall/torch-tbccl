@@ -36,7 +36,10 @@ public:
     const std::string getBackendName() const override { return "tbccl"; }
     void setTimeout(std::chrono::milliseconds timeout) override { timeout_ = timeout; }
     void shutdown() override;
-    void abort() override { shutdown(); }
+    // Maps c10d's Backend::abort() onto the communicator-wide, destructive TBCCL abort: outstanding Works fail (their
+    // Futures complete exceptionally) and later collectives throw. The communicator object stays alive until shutdown().
+    // Work::wait(timeout) is unrelated and never aborts.
+    void abort() override;
 
     std::chrono::milliseconds timeout() const { return timeout_; }
     bool is_shutdown() const;

@@ -37,6 +37,8 @@ PyTorch -> torch-tbccl -> installed libtbccl -> TBCCL transport/collectives
   no longer allocates payload-sized pinned memory (warm submit ~10-20 us at any size). Retained pinned memory = the largest transfer the communicator has seen.
 - Phase 45: `ProcessGroup` abort (`torch.distributed.distributed_c10d._abort_process_group()`) maps to TBCCL's communicator-wide abort: outstanding Works/Futures fail, later collectives raise,
   and `destroy_process_group()` no longer hangs on a silent peer. `Work.wait(timeout)` stays non-destructive. No recovery/reconnect.
+- Phase 46 (vLLM PP=2 consumer, see ../vllm-tbccl): `send`/`recv` (byte-generic, one tensor, FIFO matched), `gather` and `barrier` on 2-rank groups, one-rank groups, int32/int64/float64 SUM,
+  and `TBCCL_LOCAL_ENDPOINT=<host>:0` (a free port pair per communicator, so many groups can coexist in one process).
 - Opt-in diagnostics: `TORCH_TBCCL_TRACE=1` (per-collective timeline via `torch_tbccl.trace_events()`).
 - Not yet: other collectives (`barrier`, `reduce`, `all_gather_into_tensor`, ...), MPS.
 - Rejected with a clear error: other dtypes/ops, non-contiguous, sparse,

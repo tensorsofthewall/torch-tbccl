@@ -14,9 +14,12 @@ tbccl::DataType to_tbccl_dtype(at::ScalarType type)
     switch (type)
     {
     case at::kFloat: return tbccl::DataType::Float32;
+    case at::kDouble: return tbccl::DataType::Float64;
+    case at::kInt: return tbccl::DataType::Int32;
+    case at::kLong: return tbccl::DataType::Int64;
     default:
         TORCH_CHECK_NOT_IMPLEMENTED(
-            false, "torch-tbccl: unsupported operation: dtype ", type, " (reductions support torch.float32 only)");
+            false, "torch-tbccl: unsupported operation: dtype ", type, " (reductions support float32, float64, int32, int64)");
     }
 }
 

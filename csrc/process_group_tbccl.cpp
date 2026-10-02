@@ -243,6 +243,20 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather(
     return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::ALLGATHER, state);
 }
 
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::barrier(const c10d::BarrierOptions &)
+{
+    std::vector<at::Tensor> token{at::zeros({1}, at::kFloat)};
+    if (getSize() == 1)
+    {
+        auto state = std::make_shared<WorkState>();
+        state->tensors = token;
+        state->op_name = "barrier";
+        state->future = c10::make_intrusive<c10::ivalue::Future>(c10::ListType::create(c10::TensorType::get()));
+        return finish(state, c10d::OpType::BARRIER);
+    }
+    return allreduce(token);
+}
+
 c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::send(std::vector<at::Tensor> &tensors, int dstRank, int)
 {
     return p2p(tensors, dstRank, true);

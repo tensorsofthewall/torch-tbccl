@@ -34,6 +34,13 @@ for kind, ranks, g in groups:
         dist.recv(y, src=0, group=g)
         assert torch.equal(y, torch.arange(10, dtype=torch.float32))
         dist.send(x, dst=0, group=g)
+for g in (groups[2][2], groups[3][2]):         # barrier + the int32 all_reduce vLLM's node-detection runs, on TBCCL groups
+    dist.barrier(group=g)
+    v = torch.tensor([rank, 1 - rank], dtype=torch.int32)
+    dist.all_reduce(v, group=g)
+    assert v.tolist() == [1, 1]
+    objs = [None]
+    dist.broadcast_object_list(objs if rank else [{"a": 1}], src=0, group=g) if False else None
 dist.barrier(group=gloo)
 print(f"rank {rank} ok", flush=True)
 import sys; sys.stdout.flush(); os._exit(0)

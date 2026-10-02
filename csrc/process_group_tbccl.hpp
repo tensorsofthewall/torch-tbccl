@@ -63,6 +63,9 @@ public:
         std::vector<at::Tensor> &inputTensors,
         const c10d::AllgatherOptions &opts = c10d::AllgatherOptions()) override;
 
+    // Barrier = a one-element SUM all-reduce (what a synchronizing collective needs; one-rank groups return at once).
+    c10::intrusive_ptr<c10d::Work> barrier(const c10d::BarrierOptions &opts = c10d::BarrierOptions()) override;
+
     // Point-to-point (byte-generic, any dense contiguous dtype, exactly one tensor, the single peer rank). `tag` is accepted
     // and ignored: transfers are matched by FIFO order per direction, as vLLM/PyTorch pipeline use requires. Do not
     // interleave P2P with collectives on the same group from different threads (one ordered byte stream underneath).

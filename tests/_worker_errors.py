@@ -24,8 +24,8 @@ def expect(exc, match, fn):
 
 
 f = lambda: torch.ones(8)  # noqa: E731
-expect(NotImplementedError, "float32 only", lambda: dist.all_reduce(torch.ones(8, dtype=torch.float64)))
-expect(NotImplementedError, "float32 only", lambda: dist.all_reduce(torch.ones(8, dtype=torch.int32)))
+expect(NotImplementedError, "reductions support", lambda: dist.all_reduce(torch.ones(8, dtype=torch.float16)))
+expect(NotImplementedError, "reductions support", lambda: dist.all_reduce(torch.ones(8, dtype=torch.int8)))
 expect(NotImplementedError, "ReduceOp.SUM", lambda: dist.all_reduce(f(), op=dist.ReduceOp.MAX))
 expect(NotImplementedError, "ReduceOp.SUM", lambda: dist.all_reduce(f(), op=dist.ReduceOp.AVG))
 expect(ValueError, "contiguous", lambda: dist.all_reduce(torch.ones(16)[::2]))

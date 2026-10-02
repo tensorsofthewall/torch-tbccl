@@ -63,6 +63,13 @@ public:
         std::vector<at::Tensor> &inputTensors,
         const c10d::AllgatherOptions &opts = c10d::AllgatherOptions()) override;
 
+    // One input per rank to `rootRank`: the root's own input is copied into outputTensors[0][rootRank]; the peer's arrives via
+    // TBCCL P2P (equal sizes, as all_gather_object-style callers use).
+    c10::intrusive_ptr<c10d::Work> gather(
+        std::vector<std::vector<at::Tensor>> &outputTensors,
+        std::vector<at::Tensor> &inputTensors,
+        const c10d::GatherOptions &opts = c10d::GatherOptions()) override;
+
     // Barrier = a one-element SUM all-reduce (what a synchronizing collective needs; one-rank groups return at once).
     c10::intrusive_ptr<c10d::Work> barrier(const c10d::BarrierOptions &opts = c10d::BarrierOptions()) override;
 

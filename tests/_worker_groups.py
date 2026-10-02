@@ -41,6 +41,11 @@ for g in (groups[2][2], groups[3][2]):         # barrier + the int32 all_reduce 
     assert v.tolist() == [1, 1]
     objs = [None]
     dist.broadcast_object_list(objs if rank else [{"a": 1}], src=0, group=g) if False else None
+for g in (groups[2][2],):
+    objs = [None, None] if rank == 0 else None
+    dist.gather_object({"rank": rank, "pad": "x" * 100 * (rank + 1)}, objs, dst=0, group=g)
+    if rank == 0:
+        assert [o["rank"] for o in objs] == [0, 1], objs
 dist.barrier(group=gloo)
 print(f"rank {rank} ok", flush=True)
 import sys; sys.stdout.flush(); os._exit(0)

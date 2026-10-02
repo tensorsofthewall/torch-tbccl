@@ -243,6 +243,31 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather(
     return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::ALLGATHER, state);
 }
 
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::gather(
+    std::vector<std::vector<at::Tensor>> &outputTensors,
+    std::vector<at::Tensor> &inputTensors,
+    const c10d::GatherOptions &opts)
+{
+    TORCH_CHECK_VALUE(
+        inputTensors.size() == 1, "torch-tbccl: invalid argument: gather takes exactly one input tensor per rank");
+    TORCH_CHECK_VALUE(
+        opts.rootRank >= 0 && opts.rootRank < getSize(), "torch-tbccl: invalid argument: gather rootRank out of range");
+    TORCH_CHECK(getSize() == 2, "torch-tbccl: unsupported operation: gather needs a 2-rank group");
+    if (getRank() != opts.rootRank) return p2p(inputTensors, opts.rootRank, true);
+    TORCH_CHECK_VALUE(
+        outputTensors.size() == 1 && static_cast<int>(outputTensors[0].size()) == getSize(),
+        "torch-tbccl: invalid argument: gather on the root needs one output list of world_size tensors");
+    auto &outs = outputTensors[0];
+    const int peer = 1 - getRank();
+    TORCH_CHECK_VALUE(
+        outs[peer].scalar_type() == inputTensors[0].scalar_type() && outs[peer].numel() == inputTensors[0].numel() &&
+            outs[getRank()].numel() == inputTensors[0].numel(),
+        "torch-tbccl: invalid argument: gather outputs must match the input's dtype and numel");
+    outs[getRank()].copy_(inputTensors[0]);
+    std::vector<at::Tensor> slot{outs[peer]};
+    return p2p(slot, peer, false);
+}
+
 c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::barrier(const c10d::BarrierOptions &)
 {
     std::vector<at::Tensor> token{at::zeros({1}, at::kFloat)};

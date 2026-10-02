@@ -46,6 +46,8 @@ def run_two_ranks():
                 TBCCL_LOCAL_ENDPOINT=f"127.0.0.1:{port}",
             )
             env.update(extra_env or {})
+            if env.get("AUTO_PORT"):
+                env["TBCCL_LOCAL_ENDPOINT"] = "127.0.0.1:0"
             procs.append(
                 subprocess.Popen(
                     [sys.executable, os.path.join(HERE, script), *args],

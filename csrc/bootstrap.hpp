@@ -21,7 +21,10 @@ inline constexpr const char *kEndpointKeyPrefix = "torch_tbccl/v1/endpoint/";
 // Parses "host:port". Throws c10::ValueError (invalid argument) on an
 // empty host, missing/non-numeric/out-of-range port, or IPv6-style
 // colons in the host (not supported in Phase 42).
-tbccl::CommunicatorPeerEndpoint parse_endpoint(const std::string &text);
+tbccl::CommunicatorPeerEndpoint parse_endpoint(const std::string &text, bool allow_auto_port = false);
+
+// A local endpoint with port 0 ("host:0") means "pick a free port pair for this communicator"; others pass through.
+tbccl::CommunicatorPeerEndpoint resolve_auto_port(const tbccl::CommunicatorPeerEndpoint &local);
 
 // Reads TBCCL_LOCAL_ENDPOINT and validates it. Throws c10::ValueError if
 // unset or malformed. Touches neither the Store nor the network.

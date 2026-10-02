@@ -43,15 +43,19 @@ ProcessGroupTBCCL::ProcessGroupTBCCL(
     : c10d::Backend(rank, world_size), store_(store), timeout_(timeout)
 {
     // Fail at creation, not at the first collective.
-    TORCH_CHECK_NOT_IMPLEMENTED(world_size == 2, "torch-tbccl supports world_size=2 only (got ", world_size, ")");
+    TORCH_CHECK_NOT_IMPLEMENTED(
+        world_size == 2 || world_size == 1, "torch-tbccl supports world_size=2 only (got ", world_size, ")");
     TORCH_CHECK_VALUE(rank >= 0 && rank < world_size, "torch-tbccl: invalid argument: rank ", rank, " outside [0, ", world_size, ")");
     TORCH_CHECK_VALUE(store_ != nullptr, "torch-tbccl: invalid argument: store is null");
 
     ensure_cuda_support();
     if (const char *v = std::getenv("TORCH_TBCCL_FORCE_SYNC_ALLREDUCE")) force_sync_allreduce_ = v[0] != '\0' && v[0] != '0';
 
+    // A one-rank group (e.g. vLLM's TP=1 groups) has no peer and needs no communicator; collectives on it are rejected.
+    if (world_size == 1) return;
+
     // Validate locally before touching the Store or the network.
-    const auto local = local_endpoint_from_env();
+    const auto local = resolve_auto_port(local_endpoint_from_env());
     auto options = bootstrap_options(store_, rank, world_size, timeout, local);
     try
     {
@@ -113,6 +117,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
     }
 
     std::lock_guard<std::mutex> lock(mutex_);
+    TORCH_CHECK(
+        getSize() == 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a 2-rank group");
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
@@ -166,6 +172,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::broadcast(
     if (buf.view.bytes == 0) return finish(state, c10d::OpType::BROADCAST);
 
     std::lock_guard<std::mutex> lock(mutex_);
+    TORCH_CHECK(
+        getSize() == 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a 2-rank group");
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
@@ -218,6 +226,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather(
     if (in_buf.view.bytes == 0) return finish(state, c10d::OpType::ALLGATHER);
 
     std::lock_guard<std::mutex> lock(mutex_);
+    TORCH_CHECK(
+        getSize() == 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a 2-rank group");
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
@@ -231,6 +241,57 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather(
     }
     completion_->enqueue(state);
     return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::ALLGATHER, state);
+}
+
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::send(std::vector<at::Tensor> &tensors, int dstRank, int)
+{
+    return p2p(tensors, dstRank, true);
+}
+
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::recv(std::vector<at::Tensor> &tensors, int srcRank, int)
+{
+    return p2p(tensors, srcRank, false);
+}
+
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::p2p(std::vector<at::Tensor> &tensors, int peer, bool is_send)
+{
+    const char *name = is_send ? "send" : "recv";
+    const auto entry_ns = trace_enabled() ? trace_now_ns() : 0;
+    TORCH_CHECK_VALUE(
+        tensors.size() == 1, "torch-tbccl: invalid argument: ", name, " takes exactly one tensor (got ", tensors.size(), ")");
+    TORCH_CHECK_VALUE(
+        peer >= 0 && peer < getSize() && peer != getRank(),
+        "torch-tbccl: invalid argument: ", name, " peer rank ", peer, " must be the other rank of this group");
+    const auto buf = to_tbccl_buffer(tensors[0], true);
+
+    auto state = std::make_shared<WorkState>();
+    state->tensors = tensors;
+    state->op_name = name;
+    state->trace = begin_trace(name, tensors[0], entry_ns);
+    state->future = c10::make_intrusive<c10::ivalue::Future>(c10::ListType::create(c10::TensorType::get()));
+    const auto op = is_send ? c10d::OpType::SEND : c10d::OpType::RECV;
+    if (buf.view.bytes == 0) return finish(state, op);
+
+    // The payload is opaque bytes: describe it to TBCCL as Int32 elements (count never exceeds the byte size; the
+    // transfer itself moves buffer.bytes).
+    const std::size_t count = buf.view.bytes / 4;
+    std::lock_guard<std::mutex> lock(mutex_);
+    TORCH_CHECK(
+        getSize() == 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a 2-rank group");
+    TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
+    try
+    {
+        if (state->trace) state->trace->before_submit_ns = trace_now_ns();
+        state->work = is_send ? comm_->send(buf.view, count, tbccl::DataType::Int32, static_cast<std::size_t>(peer), buf.context)
+                              : comm_->recv(buf.view, count, tbccl::DataType::Int32, static_cast<std::size_t>(peer), buf.context);
+        if (state->trace) state->trace->return_ns = trace_now_ns();
+    }
+    catch (const std::runtime_error &e)
+    {
+        throw_tbccl_error(name, e.what());
+    }
+    completion_->enqueue(state);
+    return c10::make_intrusive<WorkTBCCL>(getRank(), op, state);
 }
 
 bool ProcessGroupTBCCL::is_shutdown() const

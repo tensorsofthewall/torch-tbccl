@@ -21,12 +21,12 @@ struct TbcclBuffer
 };
 
 // Validates `t` and maps it. Reductions need a TBCCL numeric dtype
-// (`bytes_only == false`, Float32 today); Broadcast/AllGather move bytes and
+// (`bytes_only == false`: float16/bfloat16/float32/float64/int8/uint8/int32/int64); send/recv, Broadcast and AllGather move bytes and
 // accept any dense contiguous dtype (`bytes_only == true`, `datatype` unset).
 // Throws c10::ValueError / c10::NotImplementedError with a clear message.
 TbcclBuffer to_tbccl_buffer(const at::Tensor &t, bool bytes_only = false);
 
 tbccl::DataType to_tbccl_dtype(at::ScalarType type);
-tbccl::ReduceOp to_tbccl_reduce_op(const c10d::ReduceOp &op);
+tbccl::ReduceOp to_tbccl_reduce_op(const c10d::ReduceOp &op, tbccl::DataType datatype);
 
 } // namespace torch_tbccl

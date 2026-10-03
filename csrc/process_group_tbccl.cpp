@@ -99,8 +99,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
         "torch-tbccl: invalid argument: allreduce takes exactly one tensor (got ", tensors.size(), ")");
     TORCH_CHECK_NOT_IMPLEMENTED(
         !opts.sparseIndices.has_value(), "torch-tbccl: unsupported operation: sparse allreduce");
-    const auto op = to_tbccl_reduce_op(opts.reduceOp);
     const auto buf = to_tbccl_buffer(tensors[0]);
+    const auto op = to_tbccl_reduce_op(opts.reduceOp, buf.datatype);
 
     auto state = std::make_shared<WorkState>();
     state->tensors = tensors;

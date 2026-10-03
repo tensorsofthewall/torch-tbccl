@@ -24,10 +24,17 @@ def expect(exc, match, fn):
 
 
 f = lambda: torch.ones(8)  # noqa: E731
-expect(NotImplementedError, "reductions support", lambda: dist.all_reduce(torch.ones(8, dtype=torch.float16)))
-expect(NotImplementedError, "reductions support", lambda: dist.all_reduce(torch.ones(8, dtype=torch.int8)))
-expect(NotImplementedError, "ReduceOp.SUM", lambda: dist.all_reduce(f(), op=dist.ReduceOp.MAX))
-expect(NotImplementedError, "ReduceOp.SUM", lambda: dist.all_reduce(f(), op=dist.ReduceOp.AVG))
+# float16/bfloat16/int8/uint8 are reducible since low-precision datatype; dtypes with no reduction arithmetic still fail promptly and name the
+# supported set.
+expect(NotImplementedError, "has no reduction", lambda: dist.all_reduce(torch.ones(8, dtype=torch.int16)))
+expect(NotImplementedError, "has no reduction", lambda: dist.all_reduce(torch.ones(8, dtype=torch.bool)))
+if hasattr(torch, "float8_e4m3fn"):
+    expect(NotImplementedError, "has no reduction", lambda: dist.all_reduce(torch.zeros(8, dtype=torch.uint8).view(torch.float8_e4m3fn)))
+# only SUM is mapped; the message names the dtype and the op
+expect(NotImplementedError, "supported ops: SUM", lambda: dist.all_reduce(f(), op=dist.ReduceOp.MAX))
+expect(NotImplementedError, "dtype=float32 op=MAX", lambda: dist.all_reduce(f(), op=dist.ReduceOp.MAX))
+expect(NotImplementedError, "dtype=float16 op=PRODUCT", lambda: dist.all_reduce(torch.ones(8, dtype=torch.float16), op=dist.ReduceOp.PRODUCT))
+expect(NotImplementedError, "supported ops: SUM", lambda: dist.all_reduce(f(), op=dist.ReduceOp.AVG))
 expect(ValueError, "contiguous", lambda: dist.all_reduce(torch.ones(16)[::2]))
 expect(ValueError, "contiguous", lambda: dist.all_reduce(torch.ones(4, 4).t()))
 expect(ValueError, "exactly one tensor", lambda: pg.allreduce([f(), f()]))

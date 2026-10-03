@@ -16,24 +16,30 @@ namespace torch_tbccl
 {
 
 inline constexpr const char *kLocalEndpointEnv = "TBCCL_LOCAL_ENDPOINT";
-inline constexpr const char *kEndpointKeyPrefix = "torch_tbccl/v1/endpoint/";
+// v2 (Phase 50): one record per rank holding its ACTUAL control and data endpoint, plus one shared communicator id. The v1 records (a single
+// host:port with an implicit data port) are no longer written or read.
+inline constexpr const char *kEndpointKeyPrefix = "torch_tbccl/v2/endpoint/";
+inline constexpr const char *kCommunicatorIdKey = "torch_tbccl/v2/communicator_id";
 
 // Parses "host:port". Throws c10::ValueError (invalid argument) on an
 // empty host, missing/non-numeric/out-of-range port, or IPv6-style
 // colons in the host (not supported in Phase 42).
 tbccl::CommunicatorPeerEndpoint parse_endpoint(const std::string &text, bool allow_auto_port = false);
 
-// A local endpoint with port 0 ("host:0") means "pick a free port pair for this communicator"; others pass through.
-tbccl::CommunicatorPeerEndpoint resolve_auto_port(const tbccl::CommunicatorPeerEndpoint &local);
-
 // Reads TBCCL_LOCAL_ENDPOINT and validates it. Throws c10::ValueError if
 // unset or malformed. Touches neither the Store nor the network.
 tbccl::CommunicatorPeerEndpoint local_endpoint_from_env();
 
-// Publishes `local` under this rank's namespaced Store key, waits (bounded
-// by `timeout`) for every rank's record, and returns CommunicatorOptions
-// with peers ordered by rank. Throws on bootstrap timeout or if two ranks
-// advertise the same endpoint.
+// Everything one rank needs from the rendezvous: the options for tbccl::Communicator::create() (explicit rank directory, shared communicator id,
+// pre-bound listeners). TBCCL itself never sees the Store.
+//
+// `local` is TBCCL_LOCAL_ENDPOINT: its host is where this rank listens. Its port is the control port (0 = any free port) and the data port is
+// `port + 1000` for a nonzero port (the long-standing user-facing convention) or any free port for 0. Only ranks that accept connections
+// (every rank but the last) bind listeners. The ACTUAL endpoints, not the requested ones, are published, so nothing downstream derives one
+// port from another. Rank 0 generates the communicator id and publishes it; every other rank reads it. All keys live under the Store the
+// process group was given (a per-group PrefixStore), so several process groups coexist.
+//
+// Throws on bootstrap timeout (not every rank published within `timeout`). Duplicate or conflicting endpoints are rejected by libtbccl.
 tbccl::CommunicatorOptions bootstrap_options(
     const c10::intrusive_ptr<c10d::Store> &store,
     int rank,

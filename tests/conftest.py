@@ -67,3 +67,42 @@ def run_two_ranks():
         return results
 
     return run
+
+
+@pytest.fixture
+def run_ranks():
+    """Run a worker script as `world` processes on loopback with dynamically allocated TBCCL ports (host:0); return their (rc, output)."""
+
+    def run(script, world, timeout=90, extra_env=None, per_rank_env=None, args=()):
+        master = free_ports(1)[0]
+        procs = []
+        for rank in range(world):
+            env = dict(
+                os.environ,
+                MASTER_ADDR="127.0.0.1",
+                MASTER_PORT=str(master),
+                RANK=str(rank),
+                WORLD_SIZE=str(world),
+                TBCCL_LOCAL_ENDPOINT="127.0.0.1:0",
+            )
+            env.update(extra_env or {})
+            env.update((per_rank_env or {}).get(rank, {}))
+            procs.append(
+                subprocess.Popen(
+                    [sys.executable, os.path.join(HERE, script), *args],
+                    env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                )
+            )
+        results = []
+        for p in procs:
+            try:
+                out, _ = p.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                p.kill()
+                out, _ = p.communicate()
+                results.append((-9, "TIMEOUT\n" + out))
+                continue
+            results.append((p.returncode, out))
+        return results
+
+    return run

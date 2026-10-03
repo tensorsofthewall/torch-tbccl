@@ -15,7 +15,7 @@ records only what is specific to torch-tbccl and links back for the rest.
 | TBCCL repo | `../tbccl` | `~/projects/tbccl` |
 | Login user | `svb` | `ragnarok` |
 | SSH | — | `ssh tbccl-mac` |
-| Python env | `.venv` (uv, CPython 3.13, torch 2.14.1+cu130) | `.venv` (uv 0.12 via `pip --user`, CPython 3.13.15, torch 2.14.1) |
+| Python env | `.venv` (uv, CPython 3.13, torch 2.13.0 since Phase 50, matching vLLM) | `.venv` (uv 0.12 via `pip --user`, CPython 3.13.15, torch 2.13.0 since Phase 50) |
 | Installed TBCCL prefix | `TBCCL_ROOT` (see `.local/phase42_notes.md`) | `~/projects/tbccl-install` (host-only, built in `~/projects/tbccl-build-install`) |
 
 Non-interactive SSH to the Mac uses zsh with a minimal PATH: use

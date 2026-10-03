@@ -1,7 +1,7 @@
 # PyTorch c10d API audit (Phase 42)
 
 Audited against the headers actually installed in the dev environment:
-**torch 2.14.1+cu130**, CPython 3.13, `_GLIBCXX_USE_CXX11_ABI=1`.
+**torch 2.14.1+cu130** (Phase 42; since Phase 50 every environment runs torch 2.13.0 to match vLLM, see README), CPython 3.13, `_GLIBCXX_USE_CXX11_ABI=1`.
 Headers: `torch/include/torch/csrc/distributed/c10d/`.
 
 ## Backend (`Backend.hpp`)

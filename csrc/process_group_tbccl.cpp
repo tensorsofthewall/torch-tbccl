@@ -311,9 +311,9 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::p2p(std::vector<at::Tensor> &t
     const auto op = is_send ? c10d::OpType::SEND : c10d::OpType::RECV;
     if (buf.view.bytes == 0) return finish(state, op);
 
-    // The payload is opaque bytes: describe it to TBCCL as Int32 elements (count never exceeds the byte size; the
-    // transfer itself moves buffer.bytes).
-    const std::size_t count = buf.view.bytes / 4;
+    // The payload is opaque bytes: describe it to TBCCL as UInt8 elements, one per byte (the datatype and count are only a
+    // size check; the transfer itself moves buffer.bytes), so no dtype - FP8, packed 4-bit, anything dense - is ever interpreted.
+    const std::size_t count = buf.view.bytes;
     std::lock_guard<std::mutex> lock(mutex_);
     TORCH_CHECK(
         getSize() == 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a 2-rank group");
@@ -321,8 +321,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::p2p(std::vector<at::Tensor> &t
     try
     {
         if (state->trace) state->trace->before_submit_ns = trace_now_ns();
-        state->work = is_send ? comm_->send(buf.view, count, tbccl::DataType::Int32, static_cast<std::size_t>(peer), buf.context)
-                              : comm_->recv(buf.view, count, tbccl::DataType::Int32, static_cast<std::size_t>(peer), buf.context);
+        state->work = is_send ? comm_->send(buf.view, count, tbccl::DataType::UInt8, static_cast<std::size_t>(peer), buf.context)
+                              : comm_->recv(buf.view, count, tbccl::DataType::UInt8, static_cast<std::size_t>(peer), buf.context);
         if (state->trace) state->trace->return_ns = trace_now_ns();
     }
     catch (const std::runtime_error &e)

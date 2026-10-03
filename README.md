@@ -41,7 +41,8 @@ PyTorch -> torch-tbccl -> installed libtbccl -> TBCCL transport/collectives
   and `TBCCL_LOCAL_ENDPOINT=<host>:0` (a free port pair per communicator, so many groups can coexist in one process).
 - Opt-in diagnostics: `TORCH_TBCCL_TRACE=1` (per-collective timeline via `torch_tbccl.trace_events()`).
 - Not yet: other collectives (`barrier`, `reduce`, `all_gather_into_tensor`, ...), MPS.
-- Rejected with a clear error: other dtypes/ops, non-contiguous, sparse,
+- (needs TBCCL with the datatypes): `all_reduce` SUM also for float16, bfloat16, int8 and uint8 (16-bit floats: widen to float32, add, round once to nearest even; int8/uint8 wrap modulo 256), on CPU and CUDA tensors. `send`/`recv`, `broadcast` and `all_gather` stay byte-generic for any dense dtype: FP8 (`float8_e4m3fn`, `float8_e5m2`, ...) and packed 4-bit payloads cross bit-exactly (`tests/test_byte_transport.py`); they have no reduction, so `all_reduce` of such dtypes and non-SUM ops are rejected before any communication, with a message naming the dtype and op.
+- Rejected with a clear error: dtypes without reduction arithmetic, non-SUM ops, non-contiguous, sparse,
   multiple tensors. Zero-element tensors are a no-op on both ranks.
 
 Target usage:
@@ -79,7 +80,7 @@ through the Store under `torch_tbccl/v1/endpoint/<rank>`; the PyTorch
 timeout bounds the exchange and TBCCL connection setup.
 
 ## Known limitations
-World size 2 only; reductions are Float32 SUM only; experimental DDP only (no FSDP); no MPS; no fault recovery (abort only).
+World size 2 only; reductions are SUM only (float16/bfloat16/float32/float64/int8/uint8/int32/int64); experimental DDP only (no FSDP); no MPS; no fault recovery (abort only).
 See `docs/architecture.md` and `docs/pytorch_api_audit.md`.
 
 reports and results:

@@ -15,21 +15,46 @@ tbccl::DataType to_tbccl_dtype(at::ScalarType type)
     {
     case at::kFloat: return tbccl::DataType::Float32;
     case at::kDouble: return tbccl::DataType::Float64;
+    case at::kHalf: return tbccl::DataType::Float16;
+    case at::kBFloat16: return tbccl::DataType::BFloat16;
     case at::kInt: return tbccl::DataType::Int32;
     case at::kLong: return tbccl::DataType::Int64;
+    case at::kChar: return tbccl::DataType::Int8;
+    case at::kByte: return tbccl::DataType::UInt8;
     default:
         TORCH_CHECK_NOT_IMPLEMENTED(
-            false, "torch-tbccl: unsupported operation: dtype ", type, " (reductions support float32, float64, int32, int64)");
+            false, "torch-tbccl: unsupported operation: dtype ", type,
+            " has no reduction (all_reduce supports float16, bfloat16, float32, float64, int8, uint8, int32, int64; send/recv, broadcast and all_gather "
+            "move any dense dtype as raw bytes)");
     }
 }
 
-tbccl::ReduceOp to_tbccl_reduce_op(const c10d::ReduceOp &op)
+const char *reduce_op_label(const c10d::ReduceOp &op)
+{
+    switch (op.op_)
+    {
+    case c10d::ReduceOp::SUM: return "SUM";
+    case c10d::ReduceOp::PRODUCT: return "PRODUCT";
+    case c10d::ReduceOp::MIN: return "MIN";
+    case c10d::ReduceOp::MAX: return "MAX";
+    case c10d::ReduceOp::BAND: return "BAND";
+    case c10d::ReduceOp::BOR: return "BOR";
+    case c10d::ReduceOp::BXOR: return "BXOR";
+    case c10d::ReduceOp::PREMUL_SUM: return "PREMUL_SUM";
+    case c10d::ReduceOp::AVG: return "AVG";
+    default: return "unknown";
+    }
+}
+
+tbccl::ReduceOp to_tbccl_reduce_op(const c10d::ReduceOp &op, tbccl::DataType datatype)
 {
     switch (op.op_)
     {
     case c10d::ReduceOp::SUM: return tbccl::ReduceOp::Sum;
     default:
-        TORCH_CHECK_NOT_IMPLEMENTED(false, "torch-tbccl: unsupported operation: only ReduceOp.SUM is supported");
+        TORCH_CHECK_NOT_IMPLEMENTED(
+            false, "torch-tbccl: unsupported operation: unsupported reduction dtype=", tbccl::datatype_label(datatype), " op=", reduce_op_label(op),
+            " (supported ops: SUM)");
     }
 }
 

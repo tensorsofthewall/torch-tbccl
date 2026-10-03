@@ -44,7 +44,8 @@ ProcessGroupTBCCL::ProcessGroupTBCCL(
 {
     // Fail at creation, not at the first collective.
     TORCH_CHECK_NOT_IMPLEMENTED(
-        world_size == 2 || world_size == 1, "torch-tbccl supports world_size=2 only (got ", world_size, ")");
+        world_size >= 1 && static_cast<std::size_t>(world_size) <= tbccl::kMaxFullMeshWorldSize,
+        "torch-tbccl supports world_size 1 to ", tbccl::kMaxFullMeshWorldSize, " (got ", world_size, "); validated at 2, 3 and 4");
     TORCH_CHECK_VALUE(rank >= 0 && rank < world_size, "torch-tbccl: invalid argument: rank ", rank, " outside [0, ", world_size, ")");
     TORCH_CHECK_VALUE(store_ != nullptr, "torch-tbccl: invalid argument: store is null");
 
@@ -55,7 +56,7 @@ ProcessGroupTBCCL::ProcessGroupTBCCL(
     if (world_size == 1) return;
 
     // Validate locally before touching the Store or the network.
-    const auto local = resolve_auto_port(local_endpoint_from_env());
+    const auto local = local_endpoint_from_env();
     auto options = bootstrap_options(store_, rank, world_size, timeout, local);
     try
     {
@@ -118,7 +119,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
 
     std::lock_guard<std::mutex> lock(mutex_);
     TORCH_CHECK(
-        getSize() == 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a 2-rank group");
+        getSize() >= 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a group of at least 2 ranks");
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
@@ -173,7 +174,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::broadcast(
 
     std::lock_guard<std::mutex> lock(mutex_);
     TORCH_CHECK(
-        getSize() == 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a 2-rank group");
+        getSize() >= 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a group of at least 2 ranks");
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
@@ -227,7 +228,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather(
 
     std::lock_guard<std::mutex> lock(mutex_);
     TORCH_CHECK(
-        getSize() == 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a 2-rank group");
+        getSize() >= 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a group of at least 2 ranks");
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
@@ -279,7 +280,25 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::barrier(const c10d::BarrierOpt
         state->future = c10::make_intrusive<c10::ivalue::Future>(c10::ListType::create(c10::TensorType::get()));
         return finish(state, c10d::OpType::BARRIER);
     }
-    return allreduce(token);
+    if (getSize() == 2) return allreduce(token);
+
+    // More than two ranks: the communicator's own barrier (a descriptor exchange, no payload).
+    auto state = std::make_shared<WorkState>();
+    state->tensors = token;
+    state->op_name = "barrier";
+    state->future = c10::make_intrusive<c10::ivalue::Future>(c10::ListType::create(c10::TensorType::get()));
+    std::lock_guard<std::mutex> lock(mutex_);
+    TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
+    try
+    {
+        state->work = comm_->barrier();
+    }
+    catch (const std::runtime_error &e)
+    {
+        throw_tbccl_error("barrier", e.what());
+    }
+    completion_->enqueue(state);
+    return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::BARRIER, state);
 }
 
 c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::send(std::vector<at::Tensor> &tensors, int dstRank, int)
@@ -300,7 +319,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::p2p(std::vector<at::Tensor> &t
         tensors.size() == 1, "torch-tbccl: invalid argument: ", name, " takes exactly one tensor (got ", tensors.size(), ")");
     TORCH_CHECK_VALUE(
         peer >= 0 && peer < getSize() && peer != getRank(),
-        "torch-tbccl: invalid argument: ", name, " peer rank ", peer, " must be the other rank of this group");
+        "torch-tbccl: invalid argument: ", name, " peer rank ", peer, " must be another rank of this group");
     const auto buf = to_tbccl_buffer(tensors[0], true);
 
     auto state = std::make_shared<WorkState>();
@@ -316,7 +335,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::p2p(std::vector<at::Tensor> &t
     const std::size_t count = buf.view.bytes;
     std::lock_guard<std::mutex> lock(mutex_);
     TORCH_CHECK(
-        getSize() == 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a 2-rank group");
+        getSize() >= 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a group of at least 2 ranks");
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {

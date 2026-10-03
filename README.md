@@ -1,6 +1,6 @@
 # torch-tbccl
 
-> **Experimental. Persistent CUDA staging in TBCCL; world_size=2; Float32 SUM AllReduce, byte-generic Broadcast/AllGather; experimental DDP.**
+> **Experimental. world_size 1-4 (validated; N>2 uses TBCCL's reference collectives); SUM AllReduce (float16/bfloat16 at world_size 2 only), byte-generic Broadcast/AllGather/send/recv, barrier; experimental DDP.**
 > Not NCCL-feature-parity.
 
 An out-of-tree PyTorch distributed backend (`"tbccl"`) that adapts
@@ -73,14 +73,19 @@ python -c "import torch_tbccl; print(torch_tbccl.__version__, torch_tbccl.runtim
 pytest
 ```
 
-Each rank needs `TBCCL_LOCAL_ENDPOINT=<host>:<port>` for its TBCCL data
-endpoint (separate from PyTorch's rendezvous store; give each rank a
-distinct endpoint, including on one machine). Endpoints are exchanged
-through the Store under `torch_tbccl/v1/endpoint/<rank>`; the PyTorch
-timeout bounds the exchange and TBCCL connection setup.
+Each rank needs `TBCCL_LOCAL_ENDPOINT=<host>:<port>`: `<host>` is where this rank listens for TBCCL connections (separate from PyTorch's rendezvous
+store). `<port>` is its control port and its data port is `<port> + 1000`; `<host>:0` asks the kernel for two free ports (recommended: many groups can coexist in one
+process, and one machine can host any number of ranks). Whatever was bound, each rank publishes its ACTUAL control and data endpoint through the group's Store under
+`torch_tbccl/v2/endpoint/<rank>`, rank 0 publishes one shared communicator id under `torch_tbccl/v2/communicator_id`, and TBCCL itself never sees the Store. Only ranks
+that accept connections (every rank but the last) bind listeners. The PyTorch timeout bounds the exchange and TBCCL connection setup.
+
+**torch version.** The compiled extension links against torch's C++ ABI, which is stable only within one minor series. `import torch_tbccl` therefore compares the torch it was
+built against (`torch_tbccl.built_with_torch()`) with the running torch and fails with a rebuild hint on a minor-series mismatch (override: `TORCH_TBCCL_ALLOW_TORCH_MISMATCH=1`);
+`pyproject.toml` bounds the dependency to the tested series (`torch_tbccl.TESTED_TORCH_SERIES`). Rebuild per environment with `uv pip install --no-build-isolation --no-deps -e .`
+(never `--reinstall`, which rewrites torch itself).
 
 ## Known limitations
-World size 2 only; reductions are SUM only (float16/bfloat16/float32/float64/int8/uint8/int32/int64); experimental DDP only (no FSDP); no MPS; no fault recovery (abort only).
+World size 1-4 validated (full mesh, unoptimized reference collectives for N>2; float16/bfloat16 reductions only at world size 2; `gather` is 2-rank only); reductions are SUM only (float16/bfloat16/float32/float64/int8/uint8/int32/int64); experimental DDP only (no FSDP); no MPS; no fault recovery (abort only).
 See `docs/architecture.md` and `docs/pytorch_api_audit.md`.
 
 reports and results:

@@ -2,8 +2,35 @@
 import torch  # noqa: F401  (must load libtorch before the native module)
 import torch.distributed as _dist
 
+import os as _os
+import re as _re
+
 from . import _C
-from ._version import TESTED_TORCH_VERSION, __version__
+from ._version import TESTED_TORCH_SERIES, TESTED_TORCH_VERSION, __version__
+
+
+def _series(version: str) -> str:
+    m = _re.match(r"(\d+)\.(\d+)", version)
+    return f"{m.group(1)}.{m.group(2)}" if m else version
+
+
+def built_with_torch() -> str:
+    """The torch version (from its headers) this extension was compiled against."""
+    return _C.built_with_torch()
+
+
+def _check_torch_abi() -> None:
+    built, running = _series(_C.built_with_torch()), _series(torch.__version__)
+    if built != running and _os.environ.get("TORCH_TBCCL_ALLOW_TORCH_MISMATCH") != "1":
+        raise ImportError(
+            f"torch-tbccl was compiled against torch {_C.built_with_torch()} but torch {torch.__version__} is installed. The extension "
+            f"links against torch's C++ ABI, which is only stable within one minor series ({built} != {running}). Rebuild it in this environment: "
+            "TBCCL_ROOT=<installed tbccl prefix> uv pip install --no-build-isolation --no-deps -e . "
+            "(set TORCH_TBCCL_ALLOW_TORCH_MISMATCH=1 to skip this check at your own risk)"
+        )
+
+
+_check_torch_abi()
 
 BACKEND_NAME = "tbccl"
 
@@ -59,6 +86,8 @@ register_backend()
 __all__ = [
     "__version__",
     "TESTED_TORCH_VERSION",
+    "TESTED_TORCH_SERIES",
+    "built_with_torch",
     "BACKEND_NAME",
     "runtime_version",
     "compiled_features",

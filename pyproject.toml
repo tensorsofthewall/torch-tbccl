@@ -10,7 +10,8 @@ dynamic = ["version"]
 description = "Out-of-tree PyTorch distributed backend ('tbccl') over an installed TBCCL runtime"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["torch"]
+# The compiled extension is tied to one torch minor series (see torch_tbccl/_version.py); import fails with a rebuild hint on a mismatch.
+dependencies = ["torch>=2.13,<2.14"]
 
 [project.optional-dependencies]
 test = ["pytest", "numpy"]

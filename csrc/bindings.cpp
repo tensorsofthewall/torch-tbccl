@@ -2,6 +2,7 @@
 // entry points; TBCCL's own classes are never exposed to Python.
 
 #include <torch/extension.h>
+#include <torch/version.h>
 
 #include <pybind11/chrono.h>
 
@@ -20,6 +21,13 @@ namespace
 std::string runtime_version()
 {
     return TORCH_TBCCL_LINKED_TBCCL_VERSION;
+}
+
+// The torch this extension was COMPILED against (from torch/version.h, i.e. the headers actually used), not the torch it happens to be loaded into:
+// the C++ ABI is only stable within one torch minor series, so torch_tbccl/__init__.py compares the two at import.
+std::string built_with_torch()
+{
+    return std::to_string(TORCH_VERSION_MAJOR) + "." + std::to_string(TORCH_VERSION_MINOR) + "." + std::to_string(TORCH_VERSION_PATCH);
 }
 
 pybind11::dict compiled_features()
@@ -77,6 +85,7 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
     m.doc() = "torch-tbccl native adapter (PyTorch <-> installed TBCCL)";
     m.def("runtime_version", &runtime_version, "Version of the TBCCL runtime this extension was linked against");
     m.def("compiled_features", &compiled_features, "Devices this build can serve");
+    m.def("built_with_torch", &built_with_torch, "Version of the torch headers this extension was compiled against");
     m.def("trace_enabled", &torch_tbccl::trace_enabled, "Whether TORCH_TBCCL_TRACE recording is on");
     m.def("trace_set_enabled", &torch_tbccl::trace_set_enabled, py::arg("on"));
     m.def("trace_now_ns", &torch_tbccl::trace_now_ns, "Clock used for trace stamps (monotonic ns, this process)");

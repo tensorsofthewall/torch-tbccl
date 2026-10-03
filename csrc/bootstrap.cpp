@@ -49,38 +49,25 @@ tbccl::CommunicatorPeerEndpoint local_endpoint_from_env()
 
 namespace
 {
-bool can_bind(const std::string &host, std::uint16_t port)
+std::string endpoint_text(const tbccl::Endpoint &e) { return e.host + ":" + std::to_string(e.port); }
+
+std::string record_for(const tbccl::Endpoint &control, const tbccl::Endpoint &data)
 {
-    const int fd = ::socket(AF_INET, SOCK_STREAM, 0);
-    if (fd < 0) return false;
-    int one = 1;
-    ::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one));
-    sockaddr_in a{};
-    a.sin_family = AF_INET;
-    a.sin_port = htons(port);
-    const bool ok = ::inet_pton(AF_INET, host.c_str(), &a.sin_addr) == 1 && ::bind(fd, reinterpret_cast<sockaddr *>(&a), sizeof(a)) == 0;
-    ::close(fd);
-    return ok;
+    return endpoint_text(control) + "," + endpoint_text(data);
+}
+
+tbccl::Endpoint parse_part(const std::string &text, int rank)
+{
+    try
+    {
+        return parse_endpoint(text, true);
+    }
+    catch (const c10::Error &e)
+    {
+        TORCH_CHECK_VALUE(false, "torch-tbccl: invalid argument: rank ", rank, " published a malformed endpoint record '", text, "'");
+    }
 }
 } // namespace
-
-tbccl::CommunicatorPeerEndpoint resolve_auto_port(const tbccl::CommunicatorPeerEndpoint &local)
-{
-    if (local.port != 0) return local;
-    // Every communicator needs its own control port and the data port (+1000), and one process may host several
-    // communicators (e.g. vLLM builds one group per parallel dimension): pick a free pair per communicator. Each rank
-    // picks its own and publishes it through the group-namespaced Store, so no cross-rank agreement is needed.
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> dist(20000, 62000);
-    for (int attempt = 0; attempt < 500; ++attempt)
-    {
-        const auto port = static_cast<std::uint16_t>(dist(gen));
-        if (can_bind(local.host, port) && can_bind(local.host, static_cast<std::uint16_t>(port + 1000)))
-            return {local.host, port};
-    }
-    TORCH_CHECK(false, "torch-tbccl: bootstrap: could not find a free TBCCL port pair on ", local.host);
-}
 
 tbccl::CommunicatorOptions bootstrap_options(
     const c10::intrusive_ptr<c10d::Store> &store,
@@ -90,11 +77,38 @@ tbccl::CommunicatorOptions bootstrap_options(
     const tbccl::CommunicatorPeerEndpoint &local)
 {
     auto key_for = [](int r) { return std::string(kEndpointKeyPrefix) + std::to_string(r); };
+    const auto bytes = [](const std::string &s) { return std::vector<uint8_t>(s.begin(), s.end()); };
 
-    const std::string mine = local.host + ":" + std::to_string(local.port);
-    store->set(key_for(rank), std::vector<uint8_t>(mine.begin(), mine.end()));
+    tbccl::CommunicatorOptions opts;
+    opts.rank = static_cast<std::size_t>(rank);
+    opts.world_size = static_cast<std::size_t>(world_size);
+    opts.bootstrap_timeout = timeout;
 
-    std::vector<std::string> keys;
+    std::shared_ptr<tbccl::CommunicatorListeners> listeners;
+    std::string mine = "-"; // the last rank never accepts a connection and publishes nothing
+    if (tbccl::rank_accepts_connections(static_cast<std::size_t>(rank), static_cast<std::size_t>(world_size)))
+    {
+        const std::uint16_t data_port = local.port == 0 ? 0 : static_cast<std::uint16_t>(local.port + 1000);
+        TORCH_CHECK_VALUE(
+            local.port == 0 || local.port + 1000 <= 65535,
+            "torch-tbccl: invalid argument: ", kLocalEndpointEnv, " port ", local.port, " leaves no room for the data port (port + 1000)");
+        try
+        {
+            listeners = tbccl::CommunicatorListeners::bind(local.host, local.port, data_port);
+        }
+        catch (const std::exception &e)
+        {
+            TORCH_CHECK(false, "torch-tbccl: bootstrap: could not bind TBCCL listeners on ", local.host, ":", local.port, ": ", e.what());
+        }
+        mine = record_for(listeners->control(), listeners->data());
+    }
+    opts.listeners = listeners;
+
+    // The shared communicator id: rank 0 generates it, everyone reads it.
+    if (rank == 0) store->set(kCommunicatorIdKey, bytes(tbccl::CommunicatorId::generate().to_hex()));
+    store->set(key_for(rank), bytes(mine));
+
+    std::vector<std::string> keys{kCommunicatorIdKey};
     for (int r = 0; r < world_size; ++r) keys.push_back(key_for(r));
     try
     {
@@ -107,21 +121,25 @@ tbccl::CommunicatorOptions bootstrap_options(
             timeout.count(), " ms (", e.what(), ")");
     }
 
-    tbccl::CommunicatorOptions opts;
-    opts.rank = static_cast<std::size_t>(rank);
-    opts.bootstrap_timeout = timeout;
+    {
+        const auto raw = store->get(kCommunicatorIdKey);
+        opts.communicator_id = tbccl::CommunicatorId::from_hex(std::string(raw.begin(), raw.end()));
+    }
     for (int r = 0; r < world_size; ++r)
     {
         const auto raw = store->get(key_for(r));
-        opts.peers.push_back(parse_endpoint(std::string(raw.begin(), raw.end())));
+        const std::string text(raw.begin(), raw.end());
+        tbccl::RankEndpoint e;
+        e.rank = static_cast<std::size_t>(r);
+        if (text != "-")
+        {
+            const auto comma = text.find(',');
+            TORCH_CHECK_VALUE(comma != std::string::npos, "torch-tbccl: invalid argument: rank ", r, " published a malformed endpoint record '", text, "'");
+            e.control = parse_part(text.substr(0, comma), r);
+            e.data = parse_part(text.substr(comma + 1), r);
+        }
+        opts.rank_directory.entries.push_back(e);
     }
-    for (int a = 0; a < world_size; ++a)
-        for (int b = a + 1; b < world_size; ++b)
-            TORCH_CHECK_VALUE(
-                opts.peers[a].host != opts.peers[b].host || opts.peers[a].port != opts.peers[b].port,
-                "torch-tbccl: invalid argument: ranks ", a, " and ", b, " advertise the same TBCCL endpoint ",
-                opts.peers[a].host, ":", opts.peers[a].port,
-                "; give each rank a distinct ", kLocalEndpointEnv);
     return opts;
 }
 

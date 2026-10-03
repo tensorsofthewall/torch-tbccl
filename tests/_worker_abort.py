@@ -17,7 +17,8 @@ dist.init_process_group("tbccl", timeout=timedelta(seconds=60))
 rank = dist.get_rank()
 store = dist.distributed_c10d._get_default_store()
 dev = torch.device(os.environ.get("ABORT_DEVICE", "cpu"))
-x = torch.ones(1024, device=dev)
+dtype = getattr(torch, os.environ.get("ABORT_DTYPE", "float32"))  # Phase 49: also float16 / bfloat16 / int8 / uint8 reductions
+x = torch.ones(1024, dtype=dtype, device=dev)
 dist.all_reduce(x)  # healthy control
 assert x[0].item() == 2.0
 REMOTE = os.environ.get("OBSERVE_REMOTE") == "1"
@@ -34,7 +35,7 @@ def expect_raises(f, what):
 if rank == 1:
     if mode in ("timeout_then_success",):
         time.sleep(0.8)
-        y = torch.ones(1 << 18, device=dev)
+        y = torch.ones(1 << 18, dtype=dtype, device=dev)
         dist.all_reduce(y)
         assert y[0].item() == 2.0
         store.set("r1_done", "1")
@@ -42,7 +43,7 @@ if rank == 1:
         store.wait(["release"], timedelta(seconds=60))   # silent but alive
         if REMOTE:
             # rank 0 has aborted: the connection is gone, so our next collective must fail promptly (no abort frame is used)
-            z = torch.ones(1 << 18, device=dev)
+            z = torch.ones(1 << 18, dtype=dtype, device=dev)
             t1 = time.monotonic()
             msg = expect_raises(lambda: dist.all_reduce(z), "collective after remote abort")
             print(f"rank 1 observed remote abort after {(time.monotonic() - t1) * 1e3:.1f} ms: {msg[:100]}", flush=True)
@@ -50,7 +51,7 @@ if rank == 1:
         store.set("r1_done", "1")
     print("rank 1 ok")
 else:
-    t = torch.ones(1 << 18, device=dev)
+    t = torch.ones(1 << 18, dtype=dtype, device=dev)
     if mode == "timeout_then_success":
         work = dist.all_reduce(t, async_op=True)
         msg = expect_raises(lambda: work.wait(timedelta(milliseconds=150)), "wait timeout")

@@ -1,6 +1,6 @@
 # torch-tbccl
 
-> **Experimental. Phase 50: world_size 1-4 (validated; N>2 uses TBCCL's reference collectives); SUM AllReduce (float16/bfloat16 at world_size 2 only), byte-generic Broadcast/AllGather/send/recv, barrier; experimental DDP.**
+> **Experimental. world_size 1-4 (validated; N>2 uses TBCCL's planner-selected tree/ring/recursive collectives, chosen inside TBCCL); SUM AllReduce (float16/bfloat16 at world_size 2 only), byte-generic Broadcast/AllGather/send/recv, barrier; experimental DDP. Tested against TBCCL 0.4-0.5 (C++ API); no adapter change was needed for TBCCL 0.5.0's nonblocking submission or C ABI.**
 > Not NCCL-feature-parity.
 
 An out-of-tree PyTorch distributed backend (`"tbccl"`) that adapts
@@ -85,8 +85,11 @@ built against (`torch_tbccl.built_with_torch()`) with the running torch and fail
 (never `--reinstall`, which rewrites torch itself).
 
 ## Known limitations
-World size 1-4 validated (full mesh, unoptimized reference collectives for N>2; float16/bfloat16 reductions only at world size 2; `gather` is 2-rank only); reductions are SUM only (float16/bfloat16/float32/float64/int8/uint8/int32/int64); experimental DDP only (no FSDP); no MPS; no fault recovery (abort only).
+World size 1-4 validated (full mesh; N>2 collectives are planned inside TBCCL, no adapter control; float16/bfloat16 reductions only at world size 2; `gather` is 2-rank only); reductions are SUM only (float16/bfloat16/float32/float64/int8/uint8/int32/int64); experimental DDP only (no FSDP); no MPS; no fault recovery (abort only).
 See `docs/architecture.md` and `docs/pytorch_api_audit.md`.
+
+TBCCL phases since this adapter's last change (49-52: dtypes, N-rank algorithms, nonblocking submission, structured errors, C ABI) are documented in `../tbccl/docs/`; the adapter still uses the C++ API and
+maps TBCCL's tagged error strings (`csrc/errors.hpp`), which remain unchanged. The C ABI is for other consumers (see `../exo-tbccl`).
 
 Phase 42/43 reports and results: `docs/phase42_report.md`, `docs/phase42_results.md`, `docs/phase43_report.md`,
 `docs/phase43_results.md`, `docs/phase43_ddp_api_audit.md`, `docs/phase44_report.md`, `docs/phase44_results.md`.

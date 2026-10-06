@@ -23,7 +23,7 @@ N = int(os.environ.get("N", "8"))
 dist.init_process_group("tbccl", timeout=timedelta(seconds=60))
 rank = dist.get_rank()
 peer = 1 - rank
-dev = torch.device("cuda" if os.environ.get("DEVICE_RANK0") == "cuda" and rank == 0 else "cpu")
+dev = torch.device(os.environ["DEVICE_RANK0"] if os.environ.get("DEVICE_RANK0") in ("cuda", "mps") and rank == 0 else "cpu")
 
 
 def payload(sender, k, n):

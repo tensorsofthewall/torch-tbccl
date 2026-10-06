@@ -13,6 +13,8 @@ from conftest import HERE
 pytestmark = pytest.mark.multiprocess
 HAS_CUDA = torch.cuda.is_available() and torch_tbccl.compiled_features()["cuda"]
 DEVICES = ["cpu", pytest.param("cuda", marks=pytest.mark.skipif(not HAS_CUDA, reason="needs CUDA"))]
+HAS_MPS = torch.backends.mps.is_available() and torch_tbccl.compiled_features()["mps"]
+SHUTDOWN_DEVICES = DEVICES + [pytest.param("mps", marks=pytest.mark.skipif(not HAS_MPS, reason="needs MPS"))]
 
 
 def ok(results):
@@ -37,7 +39,7 @@ def test_cycles_at_larger_world_sizes(run_ranks, world):
     ok(run_ranks("_worker_lifecycle.py", world, timeout=300, extra_env={"TEST_MODE": "cycles", "CYCLES": "5", "DEVICE": "cpu"}))
 
 
-@pytest.mark.parametrize("device", DEVICES)
+@pytest.mark.parametrize("device", SHUTDOWN_DEVICES)
 def test_normal_interpreter_exit_never_hangs(run_two_ranks, device):
     # init, one operation, and then plain interpreter exit: no destroy_process_group, no os._exit; repeated.
     for i in range(6):

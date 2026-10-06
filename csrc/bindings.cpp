@@ -17,6 +17,13 @@
 #define TORCH_TBCCL_LINKED_TBCCL_VERSION "unknown"
 #endif
 
+#ifdef TORCH_TBCCL_WITH_MPS
+namespace torch_tbccl
+{
+std::string register_mps_dispatch();
+}
+#endif
+
 namespace
 {
 
@@ -53,7 +60,11 @@ pybind11::dict compiled_features()
 #else
     d["cuda"] = false;
 #endif
+#ifdef TORCH_TBCCL_WITH_MPS
+    d["mps"] = true;
+#else
     d["mps"] = false;
+#endif
     return d;
 }
 
@@ -101,6 +112,9 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
     m.def("compiled_features", &compiled_features, "Devices this build can serve");
     m.def("c_abi_version", &c_abi_version, "libtbccl C ABI version this extension was compiled against");
     m.def("wire_protocol_version", &wire_protocol_version, "libtbccl Communicator wire-protocol version this extension was compiled against");
+#ifdef TORCH_TBCCL_WITH_MPS
+    m.def("register_mps_dispatch", &torch_tbccl::register_mps_dispatch, "Register the c10d MPS dispatcher kernels (\"\" = registered, \"upstream\" = torch provides them); raises on an incompatible torch");
+#endif
     m.def("built_with_torch", &built_with_torch, "Version of the torch headers this extension was compiled against");
     m.def("trace_enabled", &torch_tbccl::trace_enabled, "Whether TORCH_TBCCL_TRACE recording is on");
     m.def("trace_set_enabled", &torch_tbccl::trace_set_enabled, py::arg("on"));

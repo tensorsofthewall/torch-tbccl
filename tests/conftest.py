@@ -106,3 +106,22 @@ def run_ranks():
         return results
 
     return run
+
+
+def pytest_addoption(parser):
+    parser.addoption("--physical", action="store_true", default=False, help="run tests marked 'physical' (they touch a second host / the Thunderbolt link)")
+
+
+def pytest_collection_modifyitems(config, items):
+    """Group the tests for CI selection (-m "not multiprocess", -m cuda, -m ddp, ...) without decorating every old test; 'physical' never runs unless asked for."""
+    skip_physical = pytest.mark.skip(reason="physical tests need --physical (two hosts / the Thunderbolt link)")
+    for item in items:
+        fixtures = set(getattr(item, "fixturenames", ()))
+        if fixtures & {"run_two_ranks", "run_ranks"}:
+            item.add_marker(pytest.mark.multiprocess)
+        if "cuda" in item.nodeid.lower():
+            item.add_marker(pytest.mark.cuda)
+        if "ddp" in item.nodeid.lower():
+            item.add_marker(pytest.mark.ddp)
+        if "physical" in item.keywords and not config.getoption("--physical"):
+            item.add_marker(skip_physical)

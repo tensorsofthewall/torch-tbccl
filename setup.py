@@ -18,6 +18,29 @@ def fail(msg):
     sys.exit(f"torch-tbccl: {msg}")
 
 
+def version_info():
+    ns = {}
+    exec(open(os.path.join(HERE, "torch_tbccl", "_version.py")).read(), ns)  # plain constants; importing the package would need the extension
+    return ns
+
+
+def check_compatibility(root, inc):
+    """Refuse a TBCCL prefix whose C ABI this package does not support (the extension is linked statically, so the headers decide what runs)."""
+    ns = version_info()
+    hdr = os.path.join(inc, "tbccl", "tbccl.h")
+    m = os.path.isfile(hdr) and re.search(r"#\s*define\s+TBCCL_C_ABI_VERSION\s+(\d+)", open(hdr).read())
+    if not m:
+        fail(f"{hdr} does not define TBCCL_C_ABI_VERSION; {root} is not a TBCCL prefix this package can build against (needs TBCCL >= 0.5.0)")
+    abi = int(m.group(1))
+    if abi not in ns["SUPPORTED_C_ABI"]:
+        fail(f"the TBCCL prefix {root} has C ABI {abi}; torch-tbccl {ns['__version__']} supports C ABI {list(ns['SUPPORTED_C_ABI'])}. "
+             "Point TBCCL_ROOT at a compatible prefix (or use a torch-tbccl release that supports this ABI).")
+    w = re.search(r"kWireProtocolVersion\s*=\s*(\d+)", open(os.path.join(inc, "tbccl", "rank_directory.hpp")).read())
+    if w and int(w.group(1)) not in ns["TESTED_WIRE_PROTOCOL"]:
+        print(f"torch-tbccl: warning: wire protocol {w.group(1)} of this prefix has not been tested (tested: {list(ns['TESTED_WIRE_PROTOCOL'])})")
+    return abi
+
+
 def find_tbccl():
     root = os.environ.get("TBCCL_ROOT")
     if not root:
@@ -27,6 +50,8 @@ def find_tbccl():
     inc = os.path.join(root, "include")
     if not os.path.isfile(os.path.join(inc, "tbccl", "communicator.hpp")):
         fail(f"{inc}/tbccl/communicator.hpp not found; TBCCL_ROOT is not an installed TBCCL prefix")
+
+    check_compatibility(root, inc)
 
     libs = []
     for libdir in ("lib", "lib64"):
@@ -94,13 +119,24 @@ if cuda_lib and cudart:
     cudart_so = sorted(glob.glob(os.path.join(cuda_libdir, "libcudart.so.*")))[0]
     objects = [cuda_lib, lib]  # tbccl_cuda depends on tbccl
     libraries += ["c10_cuda", "torch_cuda"]
-    link_args += [f"-Wl,-rpath,{cuda_libdir}", cudart_so]
+    # The runtime path must not name the build directory: relative to the installed package when cudart comes from the pip nvidia/ tree next to it
+    # (the layout every torch wheel uses), else the absolute system CUDA directory. The extension is linked by distutils with an argument list, no shell, so `$ORIGIN` is literal.
+    site = os.path.dirname(os.path.dirname(__import__("torch").__file__))
+    if os.path.commonpath([cuda_libdir, site]) == site:
+        rpath = "$ORIGIN/" + os.path.relpath(cuda_libdir, os.path.join(site, "torch_tbccl"))
+    else:
+        rpath = cuda_libdir
+    link_args += [f"-Wl,-rpath,{rpath}", cudart_so]
     macros.append(("TORCH_TBCCL_WITH_CUDA", "1"))
 else:
     print("torch-tbccl: CUDA disabled (needs TBCCL's tbccl_cuda component and a CUDA-enabled torch)")
 
 sanitize = os.environ.get("TORCH_TBCCL_SANITIZE")  # e.g. "address,undefined" or "thread"
 compile_args = ["-O1", "-g", "-fno-omit-frame-pointer", f"-fsanitize={sanitize}"] if sanitize else ["-O2"]
+# Keep the build machine's directory layout out of the binary (assert/__FILE__ strings): sources, the torch headers and the TBCCL prefix get neutral prefixes.
+_torch_dir = os.path.dirname(os.path.abspath(__import__("torch").__file__))
+compile_args += [f"-ffile-prefix-map={HERE}=torch-tbccl", f"-ffile-prefix-map={_torch_dir}=torch", f"-ffile-prefix-map={root}=tbccl-prefix",
+                 f"-ffile-prefix-map={__import__('sysconfig').get_paths()['include']}=python"]
 if sanitize:
     link_args.append(f"-fsanitize={sanitize}")
     print(f"torch-tbccl: sanitizer build ({sanitize})")

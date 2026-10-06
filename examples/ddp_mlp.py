@@ -112,7 +112,9 @@ def train_cycle(args):
 
     side = None
     if args.side_p2p > 0:
-        side = SideChannel(rank, world, dev, args.side_p2p)
+        # MPS tensors are not usable from a second application thread while the main thread computes on MPS: PyTorch's torch.mps.synchronize() (which TBCCL also calls before touching an MPS buffer)
+        # trips a Metal assertion when two threads run it concurrently (reproduced without torch-tbccl,). The side channel therefore uses CPU tensors on an MPS rank.
+        side = SideChannel(rank, world, torch.device("cpu") if dev.type == "mps" else dev, args.side_p2p)
         side.start()  # an application thread issuing isend/irecv on the SAME process group while DDP runs its gradient all_reduces
     ddp = DDP(MLP(args.hidden, args.unused).to(dev), bucket_cap_mb=args.bucket_cap_mb, find_unused_parameters=args.unused)
     opt = torch.optim.SGD(ddp.parameters(), lr=args.lr, momentum=0.9)

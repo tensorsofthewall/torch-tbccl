@@ -97,3 +97,16 @@ def test_torchrun_launch(nproc, cycles):
     assert p.returncode == 0, p.stdout[-2000:] + p.stderr[-3000:]
     res = results_of([p.stdout])
     assert len(res) == nproc * cycles and all(r["ok"] for r in res)
+
+
+@pytest.mark.parametrize("world", [2, 3])
+def test_ddp_with_concurrent_application_p2p_on_the_same_group(run_ranks, world):
+    # An application thread exchanges deterministic messages (isend/irecv) while DDP's backward runs its gradient all_reduces on the same ProcessGroupTBCCL.
+    res = run_ddp(run_ranks, world, "--steps", "10", "--side-p2p", "60")
+    assert all(r["side_p2p_ok"] and r["side_p2p_messages"] == 60 for r in res), res
+
+
+@needs_cuda
+def test_ddp_with_concurrent_application_p2p_cuda_cpu(run_ranks):
+    res = run_ddp(run_ranks, 2, "--steps", "10", "--devices", "cuda,cpu", "--side-p2p", "60")
+    assert all(r["side_p2p_ok"] for r in res), res

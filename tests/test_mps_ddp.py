@@ -33,3 +33,9 @@ def test_ddp_with_an_mps_rank_and_unused_parameters(run_ranks):
 
 def test_ddp_with_an_mps_rank_and_tiny_buckets(run_ranks):
     run_ddp(run_ranks, 2, "--steps", "6", "--devices", "cpu,mps", "--bucket-cap-mb", "0.0005")
+
+
+@pytest.mark.parametrize("devices", ["cpu,mps", "mps,cpu"])
+def test_ddp_with_an_mps_rank_and_concurrent_application_p2p(run_ranks, devices):
+    res = run_ddp(run_ranks, 2, "--steps", "10", "--devices", devices, "--side-p2p", "60")
+    assert all(r["side_p2p_ok"] for r in res), res

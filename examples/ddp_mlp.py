@@ -12,6 +12,7 @@ Devices: --devices cpu | cuda | cuda,cpu (one entry for every rank, or one per r
 (find_unused_parameters=True). --cycles N repeats init -> train -> destroy in one process.
 """
 import argparse
+import threading
 import json
 import math
 import os
@@ -75,6 +76,32 @@ def reference(args):
     return losses, norms, flat(model)
 
 
+class SideChannel(threading.Thread):
+    """Deterministic point-to-point side traffic, unrelated to the gradients, on the same process group as DDP (ring: send to rank+1, receive from rank-1)."""
+
+    def __init__(self, rank, world, dev, count):
+        super().__init__(daemon=True)
+        self.rank, self.world, self.dev, self.count, self.ok = rank, world, dev, count, True
+
+    @staticmethod
+    def payload(sender, k, n=1 << 16):
+        return ((torch.arange(n, dtype=torch.int64) * 5 + sender * 31 + k * 11) % 997).to(torch.float32)
+
+    def run(self):
+        nxt, prv = (self.rank + 1) % self.world, (self.rank - 1) % self.world
+        try:
+            for k in range(self.count):
+                mine, theirs = self.payload(self.rank, k).to(self.dev), torch.zeros(1 << 16, device=self.dev)
+                ws = [dist.isend(mine, dst=nxt), dist.irecv(theirs, src=prv)]
+                for w in ws:
+                    w.wait()
+                if not torch.equal(theirs.cpu(), self.payload(prv, k)):
+                    self.ok = False
+        except Exception as e:  # noqa: BLE001
+            print(f"side channel failed: {e}", flush=True)
+            self.ok = False
+
+
 def train_cycle(args):
     dist.init_process_group("tbccl", timeout=timedelta(seconds=args.timeout))
     rank, world = dist.get_rank(), dist.get_world_size()
@@ -83,6 +110,10 @@ def train_cycle(args):
     assert args.global_batch % world == 0, f"--global-batch must be divisible by the world size ({world})"
     shard = args.global_batch // world
 
+    side = None
+    if args.side_p2p > 0:
+        side = SideChannel(rank, world, dev, args.side_p2p)
+        side.start()  # an application thread issuing isend/irecv on the SAME process group while DDP runs its gradient all_reduces
     ddp = DDP(MLP(args.hidden, args.unused).to(dev), bucket_cap_mb=args.bucket_cap_mb, find_unused_parameters=args.unused)
     opt = torch.optim.SGD(ddp.parameters(), lr=args.lr, momentum=0.9)
     losses, norms = [], []
@@ -98,6 +129,10 @@ def train_cycle(args):
         norms.append(grad_norm(ddp.module))
         opt.step()
 
+    side_ok = True
+    if side is not None:
+        side.join()
+        side_ok = side.ok
     mine = flat(ddp.module)
     mine32 = mine.float().to(dev)  # the parameters are float32 already; MPS has no float64
     gathered = [torch.zeros_like(mine32) for _ in range(world)]
@@ -113,9 +148,9 @@ def train_cycle(args):
     loss_err = max(abs(a - b) / max(1e-12, abs(b)) for a, b in zip(losses, ref_losses))
     norm_err = max(abs(a - b) / max(1e-12, abs(b)) for a, b in zip(norms, ref_norms))
     param_err = float((mine - ref_params).abs().max())
-    ok = consistent and loss_err < args.tol and norm_err < args.tol and param_err < args.tol
+    ok = side_ok and consistent and loss_err < args.tol and norm_err < args.tol and param_err < args.tol
     result = {"rank": rank, "world": world, "device": str(dev), "steps": args.steps, "bucket_cap_mb": args.bucket_cap_mb, "unused": args.unused,
-              "loss_rel_err": loss_err, "grad_norm_rel_err": norm_err, "param_max_abs_err": param_err, "ranks_identical": identical, "cross_rank_max_abs_diff": cross_rank_diff,
+              "loss_rel_err": loss_err, "grad_norm_rel_err": norm_err, "param_max_abs_err": param_err, "ranks_identical": identical, "side_p2p_messages": args.side_p2p, "side_p2p_ok": side_ok, "cross_rank_max_abs_diff": cross_rank_diff,
               "first_loss": losses[0], "last_loss": losses[-1], "ref_last_loss": ref_losses[-1], "ok": ok}
     dist.destroy_process_group()
     return result
@@ -128,6 +163,7 @@ def main():
     p.add_argument("--hidden", type=int, default=16)
     p.add_argument("--lr", type=float, default=0.05)
     p.add_argument("--tol", type=float, default=1e-4)
+    p.add_argument("--side-p2p", type=int, default=0, help="an application thread exchanges this many deterministic 256 KiB messages (isend/irecv, ring) on the same group while DDP trains")
     p.add_argument("--cross-device-tol", type=float, default=1e-6, help="max abs parameter difference between ranks on different device types when one is MPS")
     p.add_argument("--bucket-cap-mb", type=float, default=25.0)
     p.add_argument("--devices", default="cpu")

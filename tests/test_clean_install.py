@@ -39,6 +39,8 @@ def test_wheel_contents_metadata_and_runtime_paths(wheel):
     assert "torch_tbccl/__init__.py" in rep["members"] and "torch_tbccl/info.py" in rep["members"]
     assert any(m.startswith("torch_tbccl/_C.") for m in rep["members"])
     assert rep["problems"] == []
+    assert rep["metal_frameworks"] == (sys.platform == "darwin" and torch.backends.mps.is_built())  # Metal only in the macOS MPS wheel
+    assert not [n for n in rep["needed"] if "tbccl" in os.path.basename(n)]
 
 
 @needs_prefix
@@ -67,7 +69,7 @@ def test_unsupported_c_abi_prefix_fails_the_build_clearly(tmp_path):
 
 @needs_prefix
 @pytest.mark.skipif(os.environ.get("TORCH_TBCCL_TEST_CLEAN_INSTALL") != "1", reason="set TORCH_TBCCL_TEST_CLEAN_INSTALL=1 (creates a venv, installs torch from the index/cache)")
-@pytest.mark.parametrize("device", ["cpu", pytest.param("cuda", marks=pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA"))])
+@pytest.mark.parametrize("device", ["cpu", pytest.param("cuda", marks=pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")), pytest.param("mps", marks=pytest.mark.skipif(not torch.backends.mps.is_available(), reason="needs MPS"))])
 def test_clean_venv_install_and_real_w2_collective(wheel, tmp_path, device):
     if os.environ.get("TORCH_TBCCL_TEST_SCRATCH"):  # a torch+CUDA venv is ~6 GB: put it on a disk with room when /tmp is a small tmpfs
         import tempfile

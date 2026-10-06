@@ -1,6 +1,6 @@
 """Clean-install check: run with the Python of a venv that has torch-tbccl installed from a WHEEL, from a directory unrelated to the source checkout.
 
-    cd <empty dir> && <venv>/bin/python p71_clean_install_check.py [--device cpu|cuda] [--json OUT]
+    cd <empty dir> && <venv>/bin/python p71_clean_install_check.py [--device cpu|cuda|mps] [--json OUT]
 
 Parent: verifies the package was imported from an installed location (not a source tree, no PYTHONPATH, no editable finder), prints its info, then launches two ranks of this
 same script on loopback (rendezvous through PyTorch's env:// TCPStore; TBCCL endpoints on host:0). Each rank selects the backend only through torch.distributed
@@ -76,7 +76,7 @@ def child():
 
 def parent():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
+    ap.add_argument("--device", default="cpu", choices=["cpu", "cuda", "mps"])
     ap.add_argument("--json", default=None)
     ap.add_argument("--child", action="store_true")
     a = ap.parse_args()
@@ -95,6 +95,11 @@ def parent():
     print("INFO " + json.dumps(info), flush=True)
     if a.device == "cuda" and not torch.cuda.is_available():
         problems.append("cuda requested but unavailable")
+    if a.device == "mps":  # Phase 72: the MPS tensor is created through plain torch, and the installed wheel must advertise it
+        if not torch.backends.mps.is_available():
+            problems.append("mps requested but unavailable")
+        if "mps" not in torch_tbccl.supported_devices():
+            problems.append(f"the installed wheel does not report mps: {torch_tbccl.supported_devices()}")
     with socket.socket() as s:
         s.bind(("127.0.0.1", 0))
         port = s.getsockname()[1]

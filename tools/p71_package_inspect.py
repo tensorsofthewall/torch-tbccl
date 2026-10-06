@@ -4,6 +4,7 @@
 
 Fails (exit 1) on: a missing module / compiled extension / metadata, a wheel tag that does not match the running platform, an extension that references the build
 directory (absolute RUNPATH/RPATH entries outside system library directories, or an absolute install name), or metadata that does not pin the torch series.
+Phase 72: it also fails on a run-time dependency on libtbccl, on Apple frameworks in a non-macOS wheel, and reports whether the macOS wheel links Metal (the MPS adapter).
 What the wheel needs at run time is printed: the shared libraries the extension asks the loader for, and where it may look for them.
 """
 import argparse
@@ -82,6 +83,17 @@ def main():
             so = os.path.join(d, exts[0])
             needed, rpaths, ident = dynamic_info(so)
             report["needed"], report["search_paths"], report["install_names"] = needed, rpaths, ident
+            # TBCCL is linked statically: no dependency on a libtbccl at run time. Metal/Foundation/libobjc (system frameworks) belong to the macOS MPS adapter only.
+            tbccl_deps = [n for n in needed if "tbccl" in os.path.basename(n)]
+            if tbccl_deps:
+                problems.append(f"the extension depends on a shared libtbccl at run time: {tbccl_deps}")
+            apple = [n for n in needed if re.search(r"/(Metal|Foundation)\.framework/|libobjc", n)]
+            report["metal_frameworks"] = bool(apple)
+            if apple and sys.platform != "darwin":
+                problems.append(f"a non-macOS wheel depends on Apple frameworks: {apple}")
+            for n in apple:
+                if not n.startswith("/System/Library/") and not n.startswith("/usr/lib/"):
+                    problems.append(f"Apple framework dependency outside the system directories: {n}")
             for p in rpaths:
                 if not (p.startswith("$ORIGIN") or p.startswith("@loader_path") or p.startswith("@executable_path") or p.startswith(SYSTEM_DIRS)):
                     problems.append(f"absolute runtime search path outside the system directories: {p}")

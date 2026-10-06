@@ -31,3 +31,11 @@ def test_nrank_ddp_smoke(run_ranks, world):
     # Stretch goal: every collective DDP needs already works at N>2, so one optimizer step runs unchanged.
     for rank, (rc, out) in enumerate(run_ranks("_worker_ddp_n.py", world, timeout=120)):
         assert rc == 0, f"rank {rank}: {out}"
+
+
+@pytest.mark.parametrize("world", [3, 4])
+def test_subgroups_of_the_world(run_ranks, world):
+    # new_group over subsets of ranks (collectives, broadcast, all_gather, P2P addressed by global rank, barrier) next to the world group.
+    for rank, (rc, out) in enumerate(run_ranks("_worker_subgroups.py", world, timeout=120)):
+        assert rc == 0, f"rank {rank}: {out}"
+        assert out.strip().splitlines()[-1] == f"rank {rank} ok"

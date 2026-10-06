@@ -9,12 +9,25 @@ CompletionWorker::CompletionWorker() : thread_([this] { run(); }) {}
 
 CompletionWorker::~CompletionWorker()
 {
+    stop();
+}
+
+void CompletionWorker::stop()
+{
     {
         std::lock_guard<std::mutex> lock(mutex_);
         stop_ = true;
     }
     cv_.notify_all();
     if (thread_.joinable()) thread_.join();
+}
+
+std::vector<std::shared_ptr<WorkState>> CompletionWorker::take_retired()
+{
+    std::vector<std::shared_ptr<WorkState>> out;
+    std::lock_guard<std::mutex> lock(mutex_);
+    out.swap(retired_);
+    return out;
 }
 
 void CompletionWorker::enqueue(std::shared_ptr<WorkState> state)
@@ -49,6 +62,8 @@ void CompletionWorker::run()
                 "torch-tbccl: " + state->op_name + " failed: " + state->error())));
         else
             state->future->markCompleted(c10::IValue(state->tensors));
+        std::lock_guard<std::mutex> lock(mutex_);
+        retired_.push_back(std::move(state));
     }
 }
 

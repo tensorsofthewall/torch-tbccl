@@ -102,6 +102,8 @@ public:
     c10::intrusive_ptr<c10d::Work> recvAnysource(std::vector<at::Tensor> &, int) override;
 
 private:
+    // Destroys the WorkStates the completion thread has finished with (see CompletionWorker) on the calling thread, outside any lock.
+    void reap();
     void require_peers(const char *op) const;
     c10::intrusive_ptr<c10d::Work> p2p(std::vector<at::Tensor> &tensors, int peer, bool is_send);
     c10::intrusive_ptr<c10d::Work> finish(std::shared_ptr<WorkState> state, c10d::OpType op);

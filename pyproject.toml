@@ -27,3 +27,10 @@ no-build-isolation-package = ["torch-tbccl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+    "multiprocess: spawns one process per rank on loopback",
+    "cuda: needs a CUDA device and a CUDA-enabled torch-tbccl build",
+    "ddp: runs a real DistributedDataParallel workload",
+    "packaging: builds and inspects wheels / installs into clean environments (slow; needs TBCCL_ROOT)",
+    "physical: touches the Thunderbolt link or a second host; never part of a generic run",
+]

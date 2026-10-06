@@ -6,6 +6,8 @@
 #include "trace.hpp"
 #include "work_tbccl.hpp"
 
+#include <Python.h>
+
 #include <c10/util/Exception.h>
 
 #include <tbccl/cuda_support.hpp>
@@ -26,6 +28,26 @@ void ensure_cuda_support()
     std::call_once(once, [] { tbccl::register_cuda_support(); });
 #endif
 }
+
+// Joining the completion thread must not hold the GIL (the thread may be waiting for it inside a Future callback). The destructor of a process group
+// that Python is garbage-collecting at interpreter exit runs with the GIL held, hence the explicit release.
+class ReleaseGil
+{
+public:
+    ReleaseGil()
+    {
+        if (Py_IsInitialized() && PyGILState_Check()) state_ = PyEval_SaveThread();
+    }
+    ~ReleaseGil()
+    {
+        if (state_) PyEval_RestoreThread(state_);
+    }
+    ReleaseGil(const ReleaseGil &) = delete;
+    ReleaseGil &operator=(const ReleaseGil &) = delete;
+
+private:
+    PyThreadState *state_ = nullptr;
+};
 
 std::shared_ptr<TraceRecord> begin_trace(const char *op, const at::Tensor &t, std::uint64_t entry_ns)
 {
@@ -88,12 +110,29 @@ void ProcessGroupTBCCL::shutdown()
         worker = std::move(completion_);
     }
     doomed.reset();
-    worker.reset();
+    if (worker)
+    {
+        {
+            ReleaseGil nogil;
+            worker->stop();
+        }
+        worker.reset(); // the finished states (and their tensors) are destroyed here, on a thread that may take the GIL
+    }
 }
+
+void ProcessGroupTBCCL::reap()
+{
+    std::vector<std::shared_ptr<WorkState>> finished;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (completion_) finished = completion_->take_retired();
+    }
+} // `finished` dies here: no lock held, on the submitting thread
 
 c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
     std::vector<at::Tensor> &tensors, const c10d::AllreduceOptions &opts)
 {
+    reap();
     const auto entry_ns = trace_enabled() ? trace_now_ns() : 0;
     TORCH_CHECK_VALUE(
         tensors.size() == 1,
@@ -153,6 +192,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::finish(
 c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::broadcast(
     std::vector<at::Tensor> &tensors, const c10d::BroadcastOptions &opts)
 {
+    reap();
     const auto entry_ns = trace_enabled() ? trace_now_ns() : 0;
     TORCH_CHECK_VALUE(
         tensors.size() == 1,
@@ -193,6 +233,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather(
     std::vector<at::Tensor> &inputTensors,
     const c10d::AllgatherOptions &)
 {
+    reap();
     const auto entry_ns = trace_enabled() ? trace_now_ns() : 0;
     TORCH_CHECK_VALUE(
         inputTensors.size() == 1 && outputTensors.size() == 1,
@@ -269,6 +310,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::gather(
 
 c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::barrier(const c10d::BarrierOptions &)
 {
+    reap();
     std::vector<at::Tensor> token{at::zeros({1}, at::kFloat)};
     if (getSize() == 1)
     {
@@ -376,6 +418,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::recv(std::vector<at::Tensor> &
 
 c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::p2p(std::vector<at::Tensor> &tensors, int peer, bool is_send)
 {
+    reap();
     const char *name = is_send ? "send" : "recv";
     const auto entry_ns = trace_enabled() ? trace_now_ns() : 0;
     TORCH_CHECK_VALUE(

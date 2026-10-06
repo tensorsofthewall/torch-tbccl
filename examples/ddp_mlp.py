@@ -54,11 +54,11 @@ def batch(step, global_batch):
 
 
 def grad_norm(model):
-    return math.sqrt(sum(float((p.grad.double() ** 2).sum()) for p in model.parameters() if p.grad is not None))
+    return math.sqrt(sum(float((p.grad.detach().cpu().double() ** 2).sum()) for p in model.parameters() if p.grad is not None))
 
 
 def flat(model):
-    return torch.cat([p.detach().double().cpu().flatten() for p in model.parameters()])
+    return torch.cat([p.detach().cpu().double().flatten() for p in model.parameters()])
 
 
 def reference(args):
@@ -99,17 +99,23 @@ def train_cycle(args):
         opt.step()
 
     mine = flat(ddp.module)
-    gathered = [torch.zeros_like(mine).to(dev) for _ in range(world)]
-    dist.all_gather(gathered, mine.to(dev))
+    mine32 = mine.float().to(dev)  # the parameters are float32 already; MPS has no float64
+    gathered = [torch.zeros_like(mine32) for _ in range(world)]
+    dist.all_gather(gathered, mine32)
     identical = all(torch.equal(g.cpu(), gathered[0].cpu()) for g in gathered)
+    cross_rank_diff = max(float((g.cpu() - gathered[0].cpu()).abs().max()) for g in gathered)
+    # Gradients are reduced identically, but the optimizer step runs on each rank's own device: CPU and MPS (and CPU and CUDA kernels in general) may differ by an ulp
+    # per step. Ranks on the same device type must be bit-identical; an MPS rank next to another device type is held to --cross-device-tol.
+    mixed_mps = "mps" in names and len(set(names)) > 1
+    consistent = identical or (mixed_mps and cross_rank_diff <= args.cross_device_tol)
 
     ref_losses, ref_norms, ref_params = reference(args)
     loss_err = max(abs(a - b) / max(1e-12, abs(b)) for a, b in zip(losses, ref_losses))
     norm_err = max(abs(a - b) / max(1e-12, abs(b)) for a, b in zip(norms, ref_norms))
     param_err = float((mine - ref_params).abs().max())
-    ok = identical and loss_err < args.tol and norm_err < args.tol and param_err < args.tol
+    ok = consistent and loss_err < args.tol and norm_err < args.tol and param_err < args.tol
     result = {"rank": rank, "world": world, "device": str(dev), "steps": args.steps, "bucket_cap_mb": args.bucket_cap_mb, "unused": args.unused,
-              "loss_rel_err": loss_err, "grad_norm_rel_err": norm_err, "param_max_abs_err": param_err, "ranks_identical": identical,
+              "loss_rel_err": loss_err, "grad_norm_rel_err": norm_err, "param_max_abs_err": param_err, "ranks_identical": identical, "cross_rank_max_abs_diff": cross_rank_diff,
               "first_loss": losses[0], "last_loss": losses[-1], "ref_last_loss": ref_losses[-1], "ok": ok}
     dist.destroy_process_group()
     return result
@@ -122,6 +128,7 @@ def main():
     p.add_argument("--hidden", type=int, default=16)
     p.add_argument("--lr", type=float, default=0.05)
     p.add_argument("--tol", type=float, default=1e-4)
+    p.add_argument("--cross-device-tol", type=float, default=1e-6, help="max abs parameter difference between ranks on different device types when one is MPS")
     p.add_argument("--bucket-cap-mb", type=float, default=25.0)
     p.add_argument("--devices", default="cpu")
     p.add_argument("--unused", action="store_true")

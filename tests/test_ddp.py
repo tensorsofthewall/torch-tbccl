@@ -33,7 +33,8 @@ def run_ddp(run_ranks, world, *args, timeout=240, per_rank_env=None):
     for rank, (rc, out) in enumerate(rs):
         assert rc == 0, f"rank {rank}:\n{out}"
     res = results_of([out for _, out in rs])
-    assert all(r["ok"] and r["ranks_identical"] for r in res), res
+    assert all(r["ok"] for r in res), res
+    assert all(r["ranks_identical"] for r in res) or any(r["device"].startswith("mps") for r in res), res  # MPS next to another device type is checked by tolerance (examples/ddp_mlp.py)
     return res
 
 

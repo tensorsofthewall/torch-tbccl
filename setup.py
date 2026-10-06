@@ -141,6 +141,9 @@ if sanitize:
     link_args.append(f"-fsanitize={sanitize}")
     print(f"torch-tbccl: sanitizer build ({sanitize})")
 
+if sys.platform == "darwin":
+    link_args.append("-Wl,-S")  # no debug map: ld would record the absolute path of every object file in the build directory
+
 ext = CppExtension(
     name="torch_tbccl._C",
     sources=sorted(glob.glob(os.path.join("csrc", "*.cpp"))),

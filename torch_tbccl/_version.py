@@ -7,3 +7,9 @@ TESTED_TORCH_SERIES = ("2.13",)
 
 # The exact release every environment (torch-tbccl and vllm-tbccl venvs, Linux and Mac) runs, so one wheel set is validated everywhere. vLLM pins it.
 TESTED_TORCH_VERSION = "2.13.0"
+
+# libtbccl compatibility, checked when the extension is BUILT (setup.py reads the installed headers) and again at import. libtbccl is linked statically, so the
+# runtime that executes is always the one the wheel was built against; these ranges say which installed prefixes a build accepts. C ABI: the numbered, frozen
+# C interface; wire protocol: what two ranks (possibly built against different prefixes) must agree on at connection time.
+SUPPORTED_C_ABI = (1,)
+TESTED_WIRE_PROTOCOL = (3,)

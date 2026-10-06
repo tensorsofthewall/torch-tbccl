@@ -7,6 +7,8 @@
 #include <pybind11/chrono.h>
 
 #include <tbccl/communicator.hpp>
+#include <tbccl/rank_directory.hpp>
+#include <tbccl/tbccl.h>
 
 #include "process_group_tbccl.hpp"
 #include "trace.hpp"
@@ -21,6 +23,18 @@ namespace
 std::string runtime_version()
 {
     return TORCH_TBCCL_LINKED_TBCCL_VERSION;
+}
+
+// The libtbccl C ABI version and Communicator wire-protocol version of the headers this extension was compiled (and statically linked) against.
+// torch_tbccl/__init__.py refuses to import when they are outside the ranges recorded in torch_tbccl/_version.py.
+unsigned c_abi_version()
+{
+    return TBCCL_C_ABI_VERSION;
+}
+
+unsigned wire_protocol_version()
+{
+    return static_cast<unsigned>(tbccl::kWireProtocolVersion);
 }
 
 // The torch this extension was COMPILED against (from torch/version.h, i.e. the headers actually used), not the torch it happens to be loaded into:
@@ -85,6 +99,8 @@ PYBIND11_MODULE(TORCH_EXTENSION_NAME, m)
     m.doc() = "torch-tbccl native adapter (PyTorch <-> installed TBCCL)";
     m.def("runtime_version", &runtime_version, "Version of the TBCCL runtime this extension was linked against");
     m.def("compiled_features", &compiled_features, "Devices this build can serve");
+    m.def("c_abi_version", &c_abi_version, "libtbccl C ABI version this extension was compiled against");
+    m.def("wire_protocol_version", &wire_protocol_version, "libtbccl Communicator wire-protocol version this extension was compiled against");
     m.def("built_with_torch", &built_with_torch, "Version of the torch headers this extension was compiled against");
     m.def("trace_enabled", &torch_tbccl::trace_enabled, "Whether TORCH_TBCCL_TRACE recording is on");
     m.def("trace_set_enabled", &torch_tbccl::trace_set_enabled, py::arg("on"));

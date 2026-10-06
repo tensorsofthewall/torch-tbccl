@@ -6,7 +6,7 @@ import os as _os
 import re as _re
 
 from . import _C
-from ._version import TESTED_TORCH_SERIES, TESTED_TORCH_VERSION, __version__
+from ._version import SUPPORTED_C_ABI, TESTED_TORCH_SERIES, TESTED_TORCH_VERSION, TESTED_WIRE_PROTOCOL, __version__
 
 
 def _series(version: str) -> str:
@@ -30,7 +30,24 @@ def _check_torch_abi() -> None:
         )
 
 
+def _check_tbccl_abi() -> None:
+    abi, wire = _C.c_abi_version(), _C.wire_protocol_version()
+    if abi not in SUPPORTED_C_ABI:
+        raise ImportError(
+            f"torch-tbccl {__version__} supports libtbccl C ABI {list(SUPPORTED_C_ABI)} but this build was compiled against C ABI {abi} "
+            f"(libtbccl {_C.runtime_version()}). Rebuild torch-tbccl against a compatible TBCCL prefix: TBCCL_ROOT=<prefix> pip install --no-build-isolation ."
+        )
+    if wire not in TESTED_WIRE_PROTOCOL:
+        import warnings
+
+        warnings.warn(
+            f"torch-tbccl was built against libtbccl wire protocol {wire}; only {list(TESTED_WIRE_PROTOCOL)} has been tested. Ranks must all use the same wire protocol.",
+            stacklevel=2,
+        )
+
+
 _check_torch_abi()
+_check_tbccl_abi()
 
 BACKEND_NAME = "tbccl"
 
@@ -38,6 +55,38 @@ BACKEND_NAME = "tbccl"
 def runtime_version() -> str:
     """Version of the TBCCL runtime linked into this build."""
     return _C.runtime_version()
+
+
+def c_abi_version() -> int:
+    """libtbccl C ABI version this build was compiled against."""
+    return _C.c_abi_version()
+
+
+def wire_protocol_version() -> int:
+    """libtbccl Communicator wire-protocol version this build speaks (all ranks of a group must agree)."""
+    return _C.wire_protocol_version()
+
+
+def info() -> dict:
+    """One dict describing this installation (versions of every layer, devices, where it was loaded from); `python -m torch_tbccl.info` prints it."""
+    import platform
+
+    return {
+        "torch_tbccl": __version__,
+        "location": _os.path.dirname(_os.path.abspath(__file__)),
+        "torch_running": torch.__version__,
+        "torch_built_with": built_with_torch(),
+        "torch_tested": list(TESTED_TORCH_SERIES),
+        "libtbccl": runtime_version(),
+        "c_abi": c_abi_version(),
+        "wire_protocol": wire_protocol_version(),
+        "devices": supported_devices(),
+        "cuda_runtime_torch": torch.version.cuda,
+        "python": platform.python_version(),
+        "platform": f"{platform.system()} {platform.machine()}",
+        "backend": BACKEND_NAME,
+        "registered": BACKEND_NAME in _dist.Backend.backend_list,
+    }
 
 
 def compiled_features() -> dict:
@@ -85,11 +134,16 @@ register_backend()
 
 __all__ = [
     "__version__",
+    "SUPPORTED_C_ABI",
+    "TESTED_WIRE_PROTOCOL",
     "TESTED_TORCH_VERSION",
     "TESTED_TORCH_SERIES",
     "built_with_torch",
     "BACKEND_NAME",
     "runtime_version",
+    "c_abi_version",
+    "wire_protocol_version",
+    "info",
     "compiled_features",
     "supported_devices",
     "register_backend",

@@ -52,5 +52,6 @@ def test_async_collectives_return_before_completion(run_two_ranks, device):
     run71(run_two_ranks, "async_collectives", device=device)
 
 
-def test_outstanding_works_do_not_grow_resources(run_two_ranks):
-    run71(run_two_ranks, "growth", timeout=300)
+@pytest.mark.parametrize("device", ["", pytest.param("mps", marks=pytest.mark.skipif(not HAS_MPS, reason="needs MPS"))])
+def test_outstanding_works_do_not_grow_resources(run_two_ranks, device):
+    run71(run_two_ranks, "growth", device=device, timeout=300)

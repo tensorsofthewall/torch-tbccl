@@ -19,7 +19,8 @@ Payloads are deterministic small integers (exact in every dtype, including bf16 
 bytes; reductions compare against a float64/int64 reference reduced on the CPU.
 
 devmodes: cpu (all ranks CPU), cuda0 (rank 0 on cuda:0, the others on CPU; heterogeneous), cudaall (every rank on cuda:0 - ONE physical GPU is shared, which
-validates the ProcessGroup path but is not multi-GPU).
+validates the ProcessGroup path but is not multi-GPU), mps0 (macOS: rank 0 on an MPS tensor, the others on CPU; world sizes 1 and 2 only; dtypes MPS cannot create
+are recorded as NA with the reason).
 """
 import argparse
 import json
@@ -39,9 +40,14 @@ SIZES = [("scalar", None), ("1el", 1), ("8B", 8), ("64B", 64), ("37el", "37"), (
 UNSUPPORTED_OPS = ["reduce", "scatter", "all_to_all", "all_to_all_single", "reduce_scatter", "reduce_scatter_tensor", "all_gather_into_tensor", "scatter_object_list"]
 
 
-def expected_status(op, dtype, world):
+MPS_UNCREATABLE = ("float64", "float8_e4m3fn")  # torch refuses to create these on MPS (not a TBCCL limit)
+
+
+def expected_status(op, dtype, world, devmode="cpu"):
     """The supported surface as DOCUMENTED; the matrix must observe exactly this, so any drift - a newly working or a newly broken
-    cell - fails the check instead of passing silently. Same for every device mode."""
+    cell - fails the check instead of passing silently. Same for every device mode, except that mps0 cannot create some dtypes."""
+    if devmode == "mps0" and dtype in MPS_UNCREATABLE:
+        return "NA"
     if op in ("send/recv", "isend/irecv"):
         return "NA" if world < 2 else "PASS"
     if op in ("broadcast", "all_gather"):
@@ -74,7 +80,7 @@ def expected_status(op, dtype, world):
 
 
 def mismatches(records):
-    return [r for r in records if r["status"] != expected_status(r["op"], r["dtype"], r["world"])]
+    return [r for r in records if r["status"] != expected_status(r["op"], r["dtype"], r["world"], r.get("devmode", "cpu"))]
 
 
 # ---------------------------------------------------------------- worker side
@@ -87,7 +93,7 @@ def worker(a):
     dist.init_process_group("tbccl", timeout=timedelta(seconds=a.group_timeout))
     rank, world = dist.get_rank(), dist.get_world_size()
     on_cuda = a.devmode == "cudaall" or (a.devmode == "cuda0" and rank == 0)
-    dev = torch.device("cuda:0" if on_cuda else "cpu")
+    dev = torch.device("cuda:0" if on_cuda else "mps" if a.devmode == "mps0" and rank == 0 else "cpu")
 
     def tdtype(name):
         return getattr(torch, name)
@@ -369,8 +375,13 @@ def worker(a):
         print("START " + json.dumps({"op": op, "dtype": dtn}), flush=True)
         t0 = time.monotonic()
         try:
-            r = fn()
-            if isinstance(r, str) and r.startswith("REJECTED"):
+            if a.devmode == "mps0" and dtn in MPS_UNCREATABLE:
+                r = "NA-MPS"  # every rank skips the same cases, so nothing is left waiting
+            else:
+                r = fn()
+            if r == "NA-MPS":
+                rec.update(status="NA", detail=f"torch cannot create {dtn} tensors on MPS")
+            elif isinstance(r, str) and r.startswith("REJECTED"):
                 rec.update(status="REJECTED", detail=r.split(":", 1)[1])
             elif r == "NA":
                 rec.update(status="NA", detail="not meaningful in a one-rank group")
@@ -382,7 +393,8 @@ def worker(a):
             msg = str(e).replace("\n", " ")
             low = msg.lower()
             intentional = ("torch-tbccl: unsupported operation" in msg or "torch-tbccl: invalid argument" in msg or "does not support" in low
-                           or "not implemented" in low or "not supported" in low)
+                           or "not implemented" in low or "not supported" in low
+                           or "is not currently implemented for the mps device" in low)  # Unsupported c10d ops on MPS fail in PyTorch's dispatcher
             rec.update(status="REJECTED" if intentional else "ERROR", detail=f"{type(e).__name__}: {msg[:400]}")
         rec["ms"] = round((time.monotonic() - t0) * 1e3, 1)
         print("CASE " + json.dumps(rec), flush=True)
@@ -477,8 +489,8 @@ def cmd_run(a):
     records, meta = [], {}
     for devmode in a.devmodes.split(","):
         for w in (int(x) for x in a.worlds.split(",")):
-            if devmode == "cuda0" and w == 1:
-                pass
+            if (devmode == "cuda0" and w == 1) or (devmode == "mps0" and w > 2):
+                continue
             t0 = time.monotonic()
             lines, hung, rcs = run_config(w, devmode, a.hang, a.only)
             recs = aggregate(w, devmode, lines, hung, rcs)
@@ -510,7 +522,7 @@ CELL = {"PASS": "pass", "REJECTED": "rejected", "NA": "n/a", "WRONG": "**WRONG**
 def cmd_render(a):
     doc = json.load(open(a.file))
     recs = doc["records"]
-    devmodes = sorted({r["devmode"] for r in recs}, key=["cpu", "cuda0", "cudaall"].index)
+    devmodes = sorted({r["devmode"] for r in recs}, key=["cpu", "cuda0", "cudaall", "mps0"].index)
     worlds = sorted({r["world"] for r in recs})
 
     def cell(op, dtype, devmode, w):
@@ -526,17 +538,18 @@ def cmd_render(a):
             return f"pass ({len(m)})"
         return "/".join(sorted(CELL[s] for s in st)) + f" ({sum(r['status'] == 'PASS' for r in m)}/{len(m)} pass)"
 
-    out = [f"# capability matrix (generated; do not edit)\n",
-           f"torch {doc['torch']}, torch-tbccl {doc['torch_tbccl']}, libtbccl {doc['runtime']}. Source: `tools/capability_matrix.py`, raw data `capability_matrix.json`.\n",
+    title = "MPS capability matrix" if devmodes == ["mps0"] else "Capability matrix"
+    out = [f"# {title} (generated; do not edit)\n",
+           f"torch {doc['torch']}, torch-tbccl {doc['torch_tbccl']}, libtbccl {doc['runtime']}. Source: `tools/capability_matrix.py`, raw data `{os.path.basename(a.file)}`.\n",
            "Cell = result of the whole case (all 9 payload shapes, all root/destination variants). `pass (n)`: n dtype cases passed. Devmodes: cpu = all ranks CPU; "
-           "cuda0 = rank 0 on CUDA, others CPU (heterogeneous); cudaall = every rank on the one GPU (shared, not multi-GPU).\n"]
+           "cuda0 = rank 0 on CUDA, others CPU (heterogeneous); cudaall = every rank on the one GPU (shared, not multi-GPU); mps0 = rank 0 on MPS, others CPU. n/a for float64 and float8 on mps0: torch cannot create those tensors on MPS.\n"]
     byte_ops = ["send/recv", "isend/irecv", "broadcast", "all_gather", "gather"]
     out.append("## Master matrix (the plan's minimum rows)\n")
     out.append("CUDA = rank 0 on CUDA with the other ranks on CPU (cuda0) and every rank on the one GPU (cudaall); `pass` only when BOTH pass, otherwise the two results are shown.\n")
     out.append("| Operation | Device | dtype | " + " | ".join(f"W{w}" for w in worlds) + " |\n|---|---|---|" + "---:|" * len(worlds))
     master = [("send/recv", "bfloat16"), ("broadcast", "float32"), ("all_reduce SUM", "float32"), ("all_reduce SUM", "bfloat16"), ("all_gather", "float32"), ("gather", "float32"), ("barrier", "-")]
     for op, dt in master:
-        for dev, modes in (("CPU", ["cpu"]), ("CUDA", ["cuda0", "cudaall"])):
+        for dev, modes in (("CPU", ["cpu"]), ("CUDA", ["cuda0", "cudaall"]), ("MPS", ["mps0"])):
             if not all(m in devmodes for m in modes):
                 continue
             cells = []
@@ -612,7 +625,7 @@ def cmd_check(a):
     doc = json.load(open(a.file))
     bad = mismatches(doc["records"])
     for r in bad:
-        print(f"MISMATCH {r['devmode']} W{r['world']} {r['op']} {r['dtype']}: observed {r['status']} expected {expected_status(r['op'], r['dtype'], r['world'])} {r['detail'][:120]}")
+        print(f"MISMATCH {r['devmode']} W{r['world']} {r['op']} {r['dtype']}: observed {r['status']} expected {expected_status(r['op'], r['dtype'], r['world'], r.get('devmode', 'cpu'))} {r['detail'][:120]}")
     print(f"{len(doc['records'])} records, {len(bad)} differ from the documented surface")
     return 1 if bad else 0
 

@@ -1,96 +1,114 @@
 # torch-tbccl
 
-> **Experimental. world_size 1-4 (validated; N>2 uses TBCCL's planner-selected tree/ring/recursive collectives, chosen inside TBCCL); SUM AllReduce (float16/bfloat16 at world_size 2 only), byte-generic Broadcast/AllGather/send/recv, barrier; experimental DDP. Tested against TBCCL 0.4-0.5 (C++ API); no adapter change was needed for TBCCL 0.5.0's nonblocking submission or C ABI.**
-> Not NCCL-feature-parity.
-
-An out-of-tree PyTorch distributed backend (`"tbccl"`) that adapts
-`torch.distributed` onto an **installed** [TBCCL](../tbccl) runtime. It is
-an adapter: all transport and collective logic stays in libtbccl.
+> **Experimental.** An out-of-tree PyTorch distributed backend (`"tbccl"`) over an installed TBCCL runtime (libtbccl C ABI 1, wire protocol 3). Not NCCL feature parity.
+> Validated tuple: torch-tbccl 0.2.0.dev0, **PyTorch 2.13.x**, **CPython 3.13**, Linux x86_64 (CPU + CUDA 13) and macOS arm64 (CPU). Anything else is untested.
 
 ```
-PyTorch -> torch-tbccl -> installed libtbccl -> TBCCL transport/collectives
+PyTorch (torch.distributed) -> torch-tbccl -> libtbccl (linked statically into the extension) -> transports / collectives / device providers
 ```
 
-## Status
-- Done: package builds against an installed TBCCL; `import torch_tbccl`
-  registers the `"tbccl"` backend (idempotent); `init_process_group("tbccl")`
-  rendezvouses through the c10d Store and creates a TBCCL `Communicator`.
-- Done: CPU Float32 SUM `all_reduce` (one dense contiguous tensor, in place,
-  no copies) with real asynchronous `Work` (`async_op=True` returns after
-  submission): `is_completed()`, `wait()` (repeatable; `wait(timeout)` is a
-  bounded adapter-side wait that does not cancel the TBCCL operation),
-  `get_future()` (completed by one persistent completion thread per group),
-  tensors retained until the operation finishes.
-- Done: CUDA tensors (Linux build with TBCCL's `tbccl_cuda` component):
-  a CUDA tensor maps to a `Cuda` BufferView and PyTorch's *current* stream at
-  submission is passed to TBCCL as the producer stream, so no explicit
-  synchronization is needed between producing a tensor and `all_reduce`.
-  CUDA and CPU ranks can be mixed. The first CUDA collective in a process
-  pays one-time TBCCL setup.
-- Done: `broadcast` (any dense contiguous dtype, one tensor) and `allgather` (one input, `world_size`
-  outputs of equal size) on CPU and CUDA tensors, same `Work`/`Future` semantics as `all_reduce`.
-- Done (**experimental DDP**): `torch.nn.parallel.DistributedDataParallel` works with world_size=2,
-  Float32 gradient AllReduce, CPU<->CPU and Linux CUDA<->Mac CPU (both rank orders), including buffer sync and
-  gradient bucketing. Not supported: `find_unused_parameters=True`, other dtypes/ops for reductions, MPS, N>2,
-  fault recovery (no abort/cancel: a silent peer can block). This is not NCCL feature parity.
-- (runtime-side, no adapter change): TBCCL >= `c7cac28` keeps CUDA pinned staging persistent per communicator, so CUDA collective submission
-  no longer allocates payload-sized pinned memory (warm submit ~10-20 us at any size). Retained pinned memory = the largest transfer the communicator has seen.
-- `ProcessGroup` abort (`torch.distributed.distributed_c10d._abort_process_group()`) maps to TBCCL's communicator-wide abort: outstanding Works/Futures fail, later collectives raise,
-  and `destroy_process_group()` no longer hangs on a silent peer. `Work.wait(timeout)` stays non-destructive. No recovery/reconnect.
-- (vLLM PP=2 consumer, see../vllm-tbccl): `send`/`recv` (byte-generic, one tensor, FIFO matched), `gather` and `barrier` on 2-rank groups, one-rank groups, int32/int64/float64 SUM,
-  and `TBCCL_LOCAL_ENDPOINT=<host>:0` (a free port pair per communicator, so many groups can coexist in one process).
-- Opt-in diagnostics: `TORCH_TBCCL_TRACE=1` (per-collective timeline via `torch_tbccl.trace_events()`).
-- Not yet: other collectives (`barrier`, `reduce`, `all_gather_into_tensor`, ...), MPS.
-- (needs TBCCL with the datatypes): `all_reduce` SUM also for float16, bfloat16, int8 and uint8 (16-bit floats: widen to float32, add, round once to nearest even; int8/uint8 wrap modulo 256), on CPU and CUDA tensors. `send`/`recv`, `broadcast` and `all_gather` stay byte-generic for any dense dtype: FP8 (`float8_e4m3fn`, `float8_e5m2`, ...) and packed 4-bit payloads cross bit-exactly (`tests/test_byte_transport.py`); they have no reduction, so `all_reduce` of such dtypes and non-SUM ops are rejected before any communication, with a message naming the dtype and op.
-- Rejected with a clear error: dtypes without reduction arithmetic, non-SUM ops, non-contiguous, sparse,
-  multiple tensors. Zero-element tensors are a no-op on both ranks.
+torch-tbccl is an adapter and nothing more: all transport, algorithm and staging logic lives in libtbccl.
 
-Target usage:
+## Quick start
 
 ```python
-import torch_tbccl
+import torch
 import torch.distributed as dist
+import torch_tbccl                      # registers the "tbccl" backend (required once per process)
 
-dist.init_process_group("tbccl", ...)
-work = dist.all_reduce(tensor, async_op=True)
-work.wait()
+dist.init_process_group("tbccl")
+
+x = torch.tensor([dist.get_rank() + 1.0])
+dist.all_reduce(x)                      # SUM
+print(x)                                # tensor([3.]) on both ranks of a 2-rank group
+
+dist.destroy_process_group()
 ```
 
-| | Linux | macOS |
-|---|---|---|
-| Devices | cpu, cuda (needs `tbccl_cuda` in the TBCCL prefix and a CUDA torch) | cpu |
-
-## Install (development)
-Requires an installed TBCCL prefix (built with
-`-DCMAKE_POSITION_INDEPENDENT_CODE=ON`) and PyTorch in the environment.
+Every rank needs `TBCCL_LOCAL_ENDPOINT=<host>:<port>`: the address where this rank listens for TBCCL connections (**separate** from PyTorch's rendezvous store). `<host>:0` picks free ports, which is what you want
+(many groups can coexist in one process). With `torchrun` on one machine:
 
 ```sh
-uv venv .venv && source .venv/bin/activate
-uv pip install torch pytest numpy setuptools wheel
-export TBCCL_ROOT=/path/to/tbccl/install
-uv pip install -e . --no-build-isolation
-python -c "import torch_tbccl; print(torch_tbccl.__version__, torch_tbccl.runtime_version())"
-pytest
+TBCCL_LOCAL_ENDPOINT=127.0.0.1:0 torchrun --standalone --nproc-per-node 2 your_script.py
+TBCCL_LOCAL_ENDPOINT=127.0.0.1:0 torchrun --standalone --nproc-per-node 2 examples/ddp_mlp.py   # DDP, synthetic data, checked against a single-process reference
 ```
 
-Each rank needs `TBCCL_LOCAL_ENDPOINT=<host>:<port>`: `<host>` is where this rank listens for TBCCL connections (separate from PyTorch's rendezvous
-store). `<port>` is its control port and its data port is `<port> + 1000`; `<host>:0` asks the kernel for two free ports (recommended: many groups can coexist in one
-process, and one machine can host any number of ranks). Whatever was bound, each rank publishes its ACTUAL control and data endpoint through the group's Store under
-`torch_tbccl/v2/endpoint/<rank>`, rank 0 publishes one shared communicator id under `torch_tbccl/v2/communicator_id`, and TBCCL itself never sees the Store. Only ranks
-that accept connections (every rank but the last) bind listeners. The PyTorch timeout bounds the exchange and TBCCL connection setup.
+Across two hosts use PyTorch's normal rendezvous and give each host its own address in `TBCCL_LOCAL_ENDPOINT`:
 
-**torch version.** The compiled extension links against torch's C++ ABI, which is stable only within one minor series. `import torch_tbccl` therefore compares the torch it was
-built against (`torch_tbccl.built_with_torch()`) with the running torch and fails with a rebuild hint on a minor-series mismatch (override: `TORCH_TBCCL_ALLOW_TORCH_MISMATCH=1`);
-`pyproject.toml` bounds the dependency to the tested series (`torch_tbccl.TESTED_TORCH_SERIES`). Rebuild per environment with `uv pip install --no-build-isolation --no-deps -e .`
-(never `--reinstall`, which rewrites torch itself).
+```sh
+# host A (rank 0)
+TBCCL_LOCAL_ENDPOINT=<A address>:0 torchrun --nnodes 2 --nproc-per-node 1 --node-rank 0 --master-addr <A address> --master-port 29500 train.py
+# host B (rank 1)
+TBCCL_LOCAL_ENDPOINT=<B address>:0 torchrun --nnodes 2 --nproc-per-node 1 --node-rank 1 --master-addr <A address> --master-port 29500 train.py
+```
 
-## Known limitations
-World size 1-4 validated (full mesh; N>2 collectives are planned inside TBCCL, no adapter control; float16/bfloat16 reductions only at world size 2; `gather` is 2-rank only); reductions are SUM only (float16/bfloat16/float32/float64/int8/uint8/int32/int64); experimental DDP only (no FSDP); no MPS; no fault recovery (abort only).
-See `docs/architecture.md` and `docs/pytorch_api_audit.md`.
+`python -m torch_tbccl.info` prints what is installed (package, torch, libtbccl, C ABI, wire protocol, devices).
 
-TBCCL phases since this adapter's last change (49-52: dtypes, N-rank algorithms, nonblocking submission, structured errors, C ABI) are documented in `../tbccl/docs/`; the adapter still uses the C++ API and
-maps TBCCL's tagged error strings (`csrc/errors.hpp`), which remain unchanged. The C ABI is for other consumers (see `../exo-tbccl`).
+## Install
 
-reports and results:
+libtbccl is a **build-time** input: an installed TBCCL prefix (static libraries built position-independent). It is linked into the extension, so the wheel needs no TBCCL at run time.
 
-Two-host examples: `examples/cross_host_allreduce.py`, `cross_host_collectives.py`, `real_link_overlap.py`, `ddp_train.py`.
+```sh
+# 1. an environment with the matching torch (the build imports it)
+uv venv --python 3.13 .venv && . .venv/bin/activate
+uv pip install torch==2.13.0 setuptools wheel build            # Linux CUDA: add --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+# 2. build the wheel against the prefix and install it
+TBCCL_ROOT=/path/to/tbccl-install python -m build --wheel --no-isolation -o dist .
+uv pip install dist/torch_tbccl-*.whl
+```
+
+| Build | Needs |
+|---|---|
+| Linux x86_64 + CUDA | a prefix with `libtbccl_cuda.a` and a CUDA-enabled torch (its pip `nvidia/` runtime is used; the extension's RUNPATH is `$ORIGIN`-relative) |
+| Linux host-only | a prefix without the CUDA component (or a CPU-only torch): CPU tensors only |
+| macOS arm64 | TBCCL's host-only prefix, CPU torch: CPU tensors only |
+
+The build refuses a prefix with an unsupported C ABI. Never use `--reinstall` on an environment that holds torch (it rewrites torch); the extension is tied to torch's minor series and `import torch_tbccl`
+refuses another one with a rebuild hint (`TORCH_TBCCL_ALLOW_TORCH_MISMATCH=1` overrides, at your own risk). For development: `TBCCL_ROOT=... uv pip install --no-build-isolation --no-deps -e .`.
+Nothing here requires editing `site-packages`.
+
+## Supported surface (measured; generated by `tools/capability_matrix.py` and enforced by `tests/test_capability_matrix.py`)
+
+| Operation | Support |
+|---|---|
+| `init_process_group`, `new_group`, `destroy_process_group`, `torchrun` | world sizes 1-4 validated (5-8 accepted, untested); every group has its own communicator and ports |
+| `send` / `recv` / `isend` / `irecv`, `batch_isend_irecv` | any dense contiguous dtype (bytes: bool, int8..int64, fp16/bf16/fp32/fp64, complex64, fp8), W2-W4; matched by FIFO per peer (tags ignored) |
+| `broadcast`, `all_gather` | any dense contiguous dtype, W>=2, one tensor, equal sizes |
+| `all_reduce` | **SUM only**: int8, uint8, int32, int64, float32, float64; float16/bfloat16 **at world size 2 only**; one tensor; async supported |
+| `gather` | 2-rank groups only (so `gather_object` too); `all_gather_object` and `broadcast_object_list` work at W>=2 |
+| `barrier` | W1-W4 |
+| abort / failure | `_abort_process_group()` aborts the communicator; a peer exit fails the survivors in milliseconds; destroy with pending Work aborts it; no recovery |
+| DDP | works at W2-W4 on CPU, with CUDA + CPU ranks, `find_unused_parameters`, any bucket size; **not at world size 1** |
+| CPU and CUDA tensors | both; CUDA uses PyTorch's current stream at submission; mixed CUDA and CPU ranks work |
+
+Rejected with a clear `NotImplementedError` / `ValueError` before anything is communicated: `PRODUCT`/`MIN`/`MAX`/`AVG`/... reductions, dtypes without reduction arithmetic (int16, bool, complex, fp8),
+`reduce`, `scatter`, `reduce_scatter(_tensor)`, `all_gather_into_tensor`, `all_to_all(_single)`, `scatter_object_list`, non-contiguous tensors (no hidden copy is ever made), sparse tensors, collectives on a one-rank group.
+Not supported at all: FSDP (not validated), MPS tensors (PyTorch rejects them), fault recovery.
+
+**Rules that are not enforceable by the type system**
+* A collective and a point-to-point operation must not be in flight on the same process group at the same time (libtbccl shares one connection per peer between them; overlapping them corrupts data). The adapter refuses the overlap
+  with an error; wait for the earlier operations, or use separate process groups.
+* `Work.wait(timeout)` raises on expiry but does not cancel the operation.
+* Rendezvous stays with PyTorch; retrying `init_process_group` over the same store after a failed bootstrap is not supported (use a fresh store).
+
+## Rendezvous
+
+PyTorch rank rendezvous (`MASTER_ADDR`/`MASTER_PORT`, `TCPStore`, torchrun) and TBCCL's endpoint exchange are separate: through the group's store each rank publishes its ACTUAL control and data endpoints and rank 0 one communicator id under
+`torch_tbccl/v3/g<generation>/{endpoint/<rank>,communicator_id}` (a per-group generation keeps repeated init over a persistent store apart); libtbccl itself never sees the store. With `TBCCL_LOCAL_ENDPOINT=<host>:<port>` the data
+port is `port + 1000`; `<host>:0` picks free ports. Two machines: use each one's reachable address (e.g. the Thunderbolt link's); only the last rank needs no listener.
+
+## Opt-in diagnostics
+
+`TORCH_TBCCL_TRACE=1` (per-collective timeline via `torch_tbccl.trace_events()`), `TORCH_TBCCL_FORCE_SYNC_ALLREDUCE=1` (diagnostic baseline only, never a production mode).
+
+## Tests
+
+```sh
+python -m pytest -q                                   # unit + loopback multi-process + DDP (CUDA tests skip without a GPU)
+python tools/capability_matrix.py run --worlds 1,2,3,4 --devmodes cpu,cuda0,cudaall --out matrix.json   # the full operation x dtype x world-size matrix
+TBCCL_ROOT=... TORCH_TBCCL_TEST_CLEAN_INSTALL=1 python -m pytest tests/test_clean_install.py                              # wheel build, inspection, fresh venv, real collective
+```
+
+## License
+
+Design notes: `docs/architecture.md` and `docs/pytorch_api_audit.md`.

@@ -79,7 +79,30 @@ public:
     c10::intrusive_ptr<c10d::Work> send(std::vector<at::Tensor> &tensors, int dstRank, int tag) override;
     c10::intrusive_ptr<c10d::Work> recv(std::vector<at::Tensor> &tensors, int srcRank, int tag) override;
 
+    // Operations the backend does not implement: each throws NotImplementedError ("torch-tbccl: unsupported operation: <name> ...") instead of the base
+    // class's generic RuntimeError, so callers (and the capability matrix) can tell a deliberate rejection from a failure.
+    c10::intrusive_ptr<c10d::Work> allreduce_sparse(std::vector<at::Tensor> &, const c10d::AllreduceOptions &) override;
+    c10::intrusive_ptr<c10d::Work> allreduce_coalesced(std::vector<at::Tensor> &, const c10d::AllreduceCoalescedOptions &) override;
+    c10::intrusive_ptr<c10d::Work> reduce(std::vector<at::Tensor> &, const c10d::ReduceOptions &) override;
+    c10::intrusive_ptr<c10d::Work> _allgather_base(at::Tensor &, at::Tensor &, const c10d::AllgatherOptions &) override;
+    c10::intrusive_ptr<c10d::Work> allgather_coalesced(
+        std::vector<std::vector<at::Tensor>> &, std::vector<at::Tensor> &, const c10d::AllgatherOptions &) override;
+    c10::intrusive_ptr<c10d::Work> allgather_into_tensor_coalesced(
+        std::vector<at::Tensor> &, std::vector<at::Tensor> &, const c10d::AllgatherOptions &) override;
+    c10::intrusive_ptr<c10d::Work> scatter(
+        std::vector<at::Tensor> &, std::vector<std::vector<at::Tensor>> &, const c10d::ScatterOptions &) override;
+    c10::intrusive_ptr<c10d::Work> reduce_scatter(
+        std::vector<at::Tensor> &, std::vector<std::vector<at::Tensor>> &, const c10d::ReduceScatterOptions &) override;
+    c10::intrusive_ptr<c10d::Work> _reduce_scatter_base(at::Tensor &, at::Tensor &, const c10d::ReduceScatterOptions &) override;
+    c10::intrusive_ptr<c10d::Work> reduce_scatter_tensor_coalesced(
+        std::vector<at::Tensor> &, std::vector<at::Tensor> &, const c10d::ReduceScatterOptions &) override;
+    c10::intrusive_ptr<c10d::Work> alltoall_base(
+        at::Tensor &, at::Tensor &, std::vector<int64_t> &, std::vector<int64_t> &, const c10d::AllToAllOptions &) override;
+    c10::intrusive_ptr<c10d::Work> alltoall(std::vector<at::Tensor> &, std::vector<at::Tensor> &, const c10d::AllToAllOptions &) override;
+    c10::intrusive_ptr<c10d::Work> recvAnysource(std::vector<at::Tensor> &, int) override;
+
 private:
+    void require_peers(const char *op) const;
     c10::intrusive_ptr<c10d::Work> p2p(std::vector<at::Tensor> &tensors, int peer, bool is_send);
     c10::intrusive_ptr<c10d::Work> finish(std::shared_ptr<WorkState> state, c10d::OpType op);
 

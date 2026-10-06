@@ -12,6 +12,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <vector>
 
 namespace torch_tbccl
 {
@@ -102,6 +103,10 @@ public:
     c10::intrusive_ptr<c10d::Work> recvAnysource(std::vector<at::Tensor> &, int) override;
 
 private:
+    enum class Domain { Collective, P2P };
+    // Refuse a submission that would overlap, on this group, with in-flight operations of the other domain; remember the new one (both under mutex_).
+    void check_no_overlap(Domain mine, const char *op);
+    void track(Domain mine, const std::shared_ptr<WorkState> &state);
     // Destroys the WorkStates the completion thread has finished with (see CompletionWorker) on the calling thread, outside any lock.
     void reap();
     void require_peers(const char *op) const;
@@ -118,6 +123,8 @@ private:
     mutable std::mutex mutex_;
     std::unique_ptr<tbccl::Communicator> comm_;
     std::unique_ptr<CompletionWorker> completion_;
+    std::vector<std::weak_ptr<WorkState>> collective_in_flight_;
+    std::vector<std::weak_ptr<WorkState>> p2p_in_flight_;
 };
 
 } // namespace torch_tbccl

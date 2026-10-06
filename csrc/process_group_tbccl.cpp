@@ -118,8 +118,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
     }
 
     std::lock_guard<std::mutex> lock(mutex_);
-    TORCH_CHECK(
-        getSize() >= 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a group of at least 2 ranks");
+    require_peers(state->op_name.c_str());
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
@@ -173,8 +172,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::broadcast(
     if (buf.view.bytes == 0) return finish(state, c10d::OpType::BROADCAST);
 
     std::lock_guard<std::mutex> lock(mutex_);
-    TORCH_CHECK(
-        getSize() >= 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a group of at least 2 ranks");
+    require_peers(state->op_name.c_str());
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
@@ -227,8 +225,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather(
     if (in_buf.view.bytes == 0) return finish(state, c10d::OpType::ALLGATHER);
 
     std::lock_guard<std::mutex> lock(mutex_);
-    TORCH_CHECK(
-        getSize() >= 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a group of at least 2 ranks");
+    require_peers(state->op_name.c_str());
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
@@ -253,7 +250,8 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::gather(
         inputTensors.size() == 1, "torch-tbccl: invalid argument: gather takes exactly one input tensor per rank");
     TORCH_CHECK_VALUE(
         opts.rootRank >= 0 && opts.rootRank < getSize(), "torch-tbccl: invalid argument: gather rootRank out of range");
-    TORCH_CHECK(getSize() == 2, "torch-tbccl: unsupported operation: gather needs a 2-rank group");
+    TORCH_CHECK_NOT_IMPLEMENTED(
+        getSize() == 2, "torch-tbccl: unsupported operation: gather needs a 2-rank group (this group has ", getSize(), " ranks; rank ", getRank(), ")");
     if (getRank() != opts.rootRank) return p2p(inputTensors, opts.rootRank, true);
     TORCH_CHECK_VALUE(
         outputTensors.size() == 1 && static_cast<int>(outputTensors[0].size()) == getSize(),
@@ -301,6 +299,71 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::barrier(const c10d::BarrierOpt
     return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::BARRIER, state);
 }
 
+#define TBCCL_UNSUPPORTED(name)                                                                                                     \
+    TORCH_CHECK_NOT_IMPLEMENTED(                                                                                                    \
+        false, "torch-tbccl: unsupported operation: ", name, " is not implemented by the tbccl backend (rank ", getRank(),          \
+        "); supported: all_reduce (SUM), broadcast, all_gather, gather (2 ranks), barrier, send/recv")
+
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce_sparse(std::vector<at::Tensor> &, const c10d::AllreduceOptions &)
+{
+    TBCCL_UNSUPPORTED("allreduce_sparse");
+}
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce_coalesced(std::vector<at::Tensor> &, const c10d::AllreduceCoalescedOptions &)
+{
+    TBCCL_UNSUPPORTED("allreduce_coalesced");
+}
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::reduce(std::vector<at::Tensor> &, const c10d::ReduceOptions &)
+{
+    TBCCL_UNSUPPORTED("reduce");
+}
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::_allgather_base(at::Tensor &, at::Tensor &, const c10d::AllgatherOptions &)
+{
+    TBCCL_UNSUPPORTED("all_gather_into_tensor");
+}
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather_coalesced(
+    std::vector<std::vector<at::Tensor>> &, std::vector<at::Tensor> &, const c10d::AllgatherOptions &)
+{
+    TBCCL_UNSUPPORTED("all_gather_coalesced");
+}
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather_into_tensor_coalesced(
+    std::vector<at::Tensor> &, std::vector<at::Tensor> &, const c10d::AllgatherOptions &)
+{
+    TBCCL_UNSUPPORTED("all_gather_into_tensor_coalesced");
+}
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::scatter(
+    std::vector<at::Tensor> &, std::vector<std::vector<at::Tensor>> &, const c10d::ScatterOptions &)
+{
+    TBCCL_UNSUPPORTED("scatter");
+}
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::reduce_scatter(
+    std::vector<at::Tensor> &, std::vector<std::vector<at::Tensor>> &, const c10d::ReduceScatterOptions &)
+{
+    TBCCL_UNSUPPORTED("reduce_scatter");
+}
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::_reduce_scatter_base(at::Tensor &, at::Tensor &, const c10d::ReduceScatterOptions &)
+{
+    TBCCL_UNSUPPORTED("reduce_scatter_tensor");
+}
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::reduce_scatter_tensor_coalesced(
+    std::vector<at::Tensor> &, std::vector<at::Tensor> &, const c10d::ReduceScatterOptions &)
+{
+    TBCCL_UNSUPPORTED("reduce_scatter_tensor_coalesced");
+}
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::alltoall_base(
+    at::Tensor &, at::Tensor &, std::vector<int64_t> &, std::vector<int64_t> &, const c10d::AllToAllOptions &)
+{
+    TBCCL_UNSUPPORTED("all_to_all_single");
+}
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::alltoall(std::vector<at::Tensor> &, std::vector<at::Tensor> &, const c10d::AllToAllOptions &)
+{
+    TBCCL_UNSUPPORTED("all_to_all");
+}
+c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::recvAnysource(std::vector<at::Tensor> &, int)
+{
+    TBCCL_UNSUPPORTED("recv from any source");
+}
+#undef TBCCL_UNSUPPORTED
+
 c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::send(std::vector<at::Tensor> &tensors, int dstRank, int)
 {
     return p2p(tensors, dstRank, true);
@@ -334,8 +397,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::p2p(std::vector<at::Tensor> &t
     // size check; the transfer itself moves buffer.bytes), so no dtype - FP8, packed 4-bit, anything dense - is ever interpreted.
     const std::size_t count = buf.view.bytes;
     std::lock_guard<std::mutex> lock(mutex_);
-    TORCH_CHECK(
-        getSize() >= 2, "torch-tbccl: unsupported operation: collectives and point-to-point need a group of at least 2 ranks");
+    require_peers(state->op_name.c_str());
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
@@ -350,6 +412,13 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::p2p(std::vector<at::Tensor> &t
     }
     completion_->enqueue(state);
     return c10::make_intrusive<WorkTBCCL>(getRank(), op, state);
+}
+
+void ProcessGroupTBCCL::require_peers(const char *op) const
+{
+    TORCH_CHECK_NOT_IMPLEMENTED(
+        getSize() >= 2, "torch-tbccl: unsupported operation: ", op, " needs a group of at least 2 ranks (rank ", getRank(),
+        " is alone in a one-rank group)");
 }
 
 bool ProcessGroupTBCCL::is_shutdown() const

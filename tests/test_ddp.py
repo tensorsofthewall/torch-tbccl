@@ -87,9 +87,10 @@ TORCHRUN = os.path.join(os.path.dirname(sys.executable), "torchrun")
 @pytest.mark.parametrize("nproc,cycles", [(2, 1), (2, 3), (4, 1)])
 def test_torchrun_launch(nproc, cycles):
     # torchrun owns the store (agent store): with --cycles 3 every cycle re-initializes over the SAME store (the v2 stale-record regression).
+    # --local-addr 127.0.0.1: torchrun otherwise registers the host's FQDN, which on a Mac whose hostname does not resolve (seen after a reboot) hangs the rendezvous.
     env = dict(os.environ, TBCCL_LOCAL_ENDPOINT="127.0.0.1:0", OMP_NUM_THREADS="2")
     p = subprocess.run(
-        [TORCHRUN, "--standalone", "--nproc-per-node", str(nproc), os.path.join(HERE, SCRIPT), "--steps", "4", "--cycles", str(cycles)],
+        [TORCHRUN, "--standalone", "--local-addr", "127.0.0.1", "--nproc-per-node", str(nproc), os.path.join(HERE, SCRIPT), "--steps", "4", "--cycles", str(cycles)],
         env=env, capture_output=True, text=True, timeout=240,
     )
     assert p.returncode == 0, p.stdout[-2000:] + p.stderr[-3000:]

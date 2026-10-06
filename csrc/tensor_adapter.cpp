@@ -5,6 +5,17 @@
 #ifdef TORCH_TBCCL_WITH_CUDA
 #include <c10/cuda/CUDAStream.h>
 #endif
+#ifdef TORCH_TBCCL_WITH_MPS
+#include "mps_tensor_adapter.hpp"
+#endif
+
+#if defined(TORCH_TBCCL_WITH_CUDA)
+#define TORCH_TBCCL_DEVICE_LIST "CPU, CUDA"
+#elif defined(TORCH_TBCCL_WITH_MPS)
+#define TORCH_TBCCL_DEVICE_LIST "CPU, MPS"
+#else
+#define TORCH_TBCCL_DEVICE_LIST "CPU"
+#endif
 
 namespace torch_tbccl
 {
@@ -66,14 +77,19 @@ TbcclBuffer to_tbccl_buffer(const at::Tensor &t, bool bytes_only)
         "torch-tbccl: unsupported operation: only dense strided tensors are supported (got layout ", t.layout(),
         t.is_quantized() ? ", quantized" : "", ")");
     const bool is_cuda = t.device().type() == at::kCUDA;
+    const bool is_mps = t.device().type() == at::kMPS;
+    bool device_ok = t.device().type() == at::kCPU;
 #ifdef TORCH_TBCCL_WITH_CUDA
-    const bool device_ok = t.device().type() == at::kCPU || is_cuda;
-#else
-    const bool device_ok = t.device().type() == at::kCPU;
+    device_ok = device_ok || is_cuda;
+#endif
+#ifdef TORCH_TBCCL_WITH_MPS
+    device_ok = device_ok || is_mps;
 #endif
     TORCH_CHECK_NOT_IMPLEMENTED(
         device_ok, "torch-tbccl: unsupported operation: device ", t.device(),
-        is_cuda ? " (this build has no CUDA support)" : " (supported: CPU, CUDA)");
+        is_cuda  ? " (this build has no CUDA support)"
+        : is_mps ? " (this build has no MPS support)"
+                 : " (supported on this build: " TORCH_TBCCL_DEVICE_LIST ")");
 
     TbcclBuffer out;
     if (!bytes_only) out.datatype = to_tbccl_dtype(t.scalar_type());
@@ -84,6 +100,12 @@ TbcclBuffer to_tbccl_buffer(const at::Tensor &t, bool bytes_only)
     out.count = static_cast<std::size_t>(t.numel());
     out.view.data = t.numel() == 0 ? nullptr : t.data_ptr();
     out.view.bytes = static_cast<std::size_t>(t.nbytes());
+#ifdef TORCH_TBCCL_WITH_MPS
+    if (is_mps)
+    {
+        TORCH_CHECK_NOT_IMPLEMENTED(false, "torch-tbccl: unsupported operation: MPS adapter not implemented");
+    }
+#endif
     if (!is_cuda)
     {
         out.view.memory_kind = tbccl::MemoryKind::Host;

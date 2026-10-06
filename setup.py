@@ -8,6 +8,7 @@ import os
 import re
 import sys
 
+import torch
 from setuptools import setup
 from torch.utils.cpp_extension import BuildExtension, CppExtension
 
@@ -141,12 +142,21 @@ if sanitize:
     link_args.append(f"-fsanitize={sanitize}")
     print(f"torch-tbccl: sanitizer build ({sanitize})")
 
+sources = sorted(glob.glob(os.path.join("csrc", "*.cpp")))
 if sys.platform == "darwin":
     link_args.append("-Wl,-S")  # no debug map: ld would record the absolute path of every object file in the build directory
+    if torch.backends.mps.is_built():
+        # PyTorch MPS tensors: the c10d MPS dispatch shim and the Objective-C++ tensor adapter (macOS only; Linux never compiles an .mm). The Metal framework is a system library.
+        sources += sorted(glob.glob(os.path.join("csrc", "*.mm")))
+        link_args += ["-framework", "Metal", "-framework", "Foundation"]
+        macros.append(("TORCH_TBCCL_WITH_MPS", "1"))
+        print("torch-tbccl: MPS enabled (Objective-C++ adapter + c10d MPS dispatch)")
+    else:
+        print("torch-tbccl: MPS disabled (this torch was not built with MPS)")
 
 ext = CppExtension(
     name="torch_tbccl._C",
-    sources=sorted(glob.glob(os.path.join("csrc", "*.cpp"))),
+    sources=sources,
     include_dirs=include_dirs,
     library_dirs=library_dirs,
     libraries=libraries,

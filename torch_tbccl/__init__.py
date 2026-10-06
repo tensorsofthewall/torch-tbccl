@@ -48,6 +48,8 @@ def _check_tbccl_abi() -> None:
 
 _check_torch_abi()
 _check_tbccl_abi()
+if hasattr(_C, "register_mps_dispatch"):
+    _C.register_mps_dispatch()  # raises (ImportError path: RuntimeError) when this torch's c10d schemas are not the ones the MPS shim was built for
 
 BACKEND_NAME = "tbccl"
 
@@ -95,7 +97,7 @@ def compiled_features() -> dict:
 
 
 def supported_devices() -> list:
-    return [d for d in ("cpu", "cuda") if compiled_features().get(d)]
+    return [d for d in ("cpu", "cuda", "mps") if compiled_features().get(d)]
 
 
 def trace_enabled() -> bool:

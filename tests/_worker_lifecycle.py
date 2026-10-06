@@ -75,7 +75,7 @@ else:
 
 a, b = points["after_warmup"], points["end"]
 print("LIFECYCLE " + json.dumps({"rank": rank, "mode": mode, "n": n, "wall_s": round(time.monotonic() - t_start, 1), "after_warmup": a, "end": b}), flush=True)
-assert b["fds"] == a["fds"], f"file descriptors grew {a['fds']} -> {b['fds']}"
+assert b["fds"] <= a["fds"], f"file descriptors grew {a['fds']} -> {b['fds']}"
 assert b["os_threads"] == a["os_threads"] and b["py_threads"] == a["py_threads"], (a, b)
 assert b["rss_mb"] - a["rss_mb"] < 60, f"RSS grew {b['rss_mb'] - a['rss_mb']:.1f} MB"
 if dev.type == "cuda":

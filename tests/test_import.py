@@ -61,8 +61,8 @@ def test_libtbccl_c_abi_mismatch_is_a_clear_import_error(monkeypatch):
 def test_untested_wire_protocol_warns(monkeypatch):
     import pytest
 
-    monkeypatch.setattr(torch_tbccl._C, "wire_protocol_version", lambda: 4, raising=False)
-    with pytest.warns(UserWarning, match="wire protocol 4"):
+    monkeypatch.setattr(torch_tbccl._C, "wire_protocol_version", lambda: 3, raising=False)
+    with pytest.warns(UserWarning, match="wire protocol 3"):
         torch_tbccl._check_tbccl_abi()
 
 

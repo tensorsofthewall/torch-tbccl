@@ -18,9 +18,12 @@ spec.loader.exec_module(matrix)
 
 HAS_CUDA = torch.cuda.is_available() and torch_tbccl.compiled_features()["cuda"]
 needs_cuda = pytest.mark.skipif(not HAS_CUDA, reason="needs CUDA")
+HAS_MPS = torch.backends.mps.is_available() and torch_tbccl.compiled_features()["mps"]
+needs_mps = pytest.mark.skipif(not HAS_MPS, reason="needs MPS")
 CONFIGS = [
     ("cpu", 1), ("cpu", 2), ("cpu", 3), ("cpu", 4),
     pytest.param("cuda0", 2, marks=needs_cuda), pytest.param("cuda0", 3, marks=needs_cuda), pytest.param("cudaall", 2, marks=needs_cuda),
+    pytest.param("mps0", 1, marks=needs_mps), pytest.param("mps0", 2, marks=needs_mps),  # Phase 72: rank 0 on MPS, the others on CPU
 ]
 
 
@@ -42,3 +45,10 @@ def test_expected_surface_documents_the_known_restrictions():
     assert e("all_reduce PRODUCT", "float32", 2) == "REJECTED" and e("all_reduce MAX", "int32", 2) == "REJECTED"
     assert e("gather", "float32", 2) == "PASS" and e("gather", "float32", 4) == "REJECTED"
     assert e("send/recv", "bfloat16", 1) == "NA" and e("broadcast", "float32", 1) == "REJECTED"
+
+
+def test_expected_surface_for_mps():
+    e = matrix.expected_status
+    assert e("send/recv", "float64", 2, "mps0") == "NA" and e("all_reduce SUM", "float8_e4m3fn", 2, "mps0") == "NA"  # torch cannot create them on MPS
+    assert e("all_reduce SUM", "float16", 2, "mps0") == "PASS" and e("all_reduce SUM", "float16", 3, "mps0") == "REJECTED"
+    assert e("all_reduce SUM", "float64", 2, "cpu") == "PASS"  # unchanged for the other device modes

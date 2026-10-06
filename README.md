@@ -1,7 +1,7 @@
 # torch-tbccl
 
 > **Experimental.** An out-of-tree PyTorch distributed backend (`"tbccl"`) over an installed TBCCL runtime (libtbccl C ABI 1, wire protocol 3). Not NCCL feature parity.
-> Validated tuple: torch-tbccl 0.2.0.dev0, **PyTorch 2.13.x**, **CPython 3.13**, Linux x86_64 (CPU + CUDA 13) and macOS arm64 (CPU). Anything else is untested.
+> Validated tuple: torch-tbccl 0.2.0.dev0, **PyTorch 2.13.x**, **CPython 3.13**, Linux x86_64 (CPU + CUDA 13) and macOS arm64 (CPU + **MPS**, Phase 72). Anything else is untested.
 
 ```
 PyTorch (torch.distributed) -> torch-tbccl -> libtbccl (linked statically into the extension) -> transports / collectives / device providers
@@ -63,7 +63,7 @@ uv pip install dist/torch_tbccl-*.whl
 |---|---|
 | Linux x86_64 + CUDA | a prefix with `libtbccl_cuda.a` and a CUDA-enabled torch (its pip `nvidia/` runtime is used; the extension's RUNPATH is `$ORIGIN`-relative) |
 | Linux host-only | a prefix without the CUDA component (or a CPU-only torch): CPU tensors only |
-| macOS arm64 | TBCCL's host-only prefix, CPU torch: CPU tensors only |
+| macOS arm64 | TBCCL's host-only prefix and a torch built with MPS (the PyTorch macOS wheel): CPU and MPS tensors (adds an Objective-C++ file; needs the Xcode command-line tools to build) |
 
 The build refuses a prefix with an unsupported C ABI. Never use `--reinstall` on an environment that holds torch (it rewrites torch); the extension is tied to torch's minor series and `import torch_tbccl`
 refuses another one with a rebuild hint (`TORCH_TBCCL_ALLOW_TORCH_MISMATCH=1` overrides, at your own risk). For development: `TBCCL_ROOT=... uv pip install --no-build-isolation --no-deps -e .`.
@@ -81,7 +81,7 @@ Nothing here requires editing `site-packages`.
 | `barrier` | W1-W4 |
 | abort / failure | `_abort_process_group()` aborts the communicator; a peer exit fails the survivors in milliseconds; destroy with pending Work aborts it; no recovery |
 | DDP | works at W2-W4 on CPU, with CUDA + CPU ranks, `find_unused_parameters`, any bucket size; **not at world size 1** |
-| CPU and CUDA tensors | both; CUDA uses PyTorch's current stream at submission; mixed CUDA and CPU ranks work |
+| CPU, CUDA and MPS tensors | CUDA uses PyTorch's current stream at submission; mixed CUDA/CPU ranks work. **MPS (macOS, Phase 72)**: send/recv, isend/irecv, broadcast, all_gather, 2-rank gather, barrier and SUM all_reduce on MPS tensors (float32/float16/bfloat16/int32/int64/int8/uint8 reduce; any dtype PyTorch can create on MPS moves as bytes; no float64/float8 on MPS at all), W2 validated, DDP with an MPS rank next to a CPU rank. Same restrictions as CPU/CUDA, plus: every MPS operation first runs a device-wide MPS synchronize, only shared-storage buffers are supported, and ops outside the list above fail in PyTorch's own dispatcher. Details: `docs/phase72_mps_capability_matrix.md` |
 
 Rejected with a clear `NotImplementedError` / `ValueError` before anything is communicated: `PRODUCT`/`MIN`/`MAX`/`AVG`/... reductions, dtypes without reduction arithmetic (int16, bool, complex, fp8),
 `reduce`, `scatter`, `reduce_scatter(_tensor)`, `all_gather_into_tensor`, `all_to_all(_single)`, `scatter_object_list`, non-contiguous tensors (no hidden copy is ever made), sparse tensors, collectives on a one-rank group.

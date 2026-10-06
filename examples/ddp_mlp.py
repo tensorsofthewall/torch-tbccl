@@ -131,7 +131,7 @@ def main():
     args = p.parse_args()
     results = [train_cycle(args) for _ in range(args.cycles)]
     for r in results:
-        print("RESULT " + json.dumps(r), flush=True)
+        os.write(1, ("RESULT " + json.dumps(r) + "\n").encode())  # one write: ranks sharing a stdout pipe must not interleave inside a line
     if args.json and results[0]["rank"] == 0:
         json.dump(results, open(args.json, "w"), indent=1)
     sys.exit(0 if all(r["ok"] for r in results) else 1)

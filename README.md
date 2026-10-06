@@ -1,6 +1,6 @@
 # torch-tbccl
 
-> **Experimental.** An out-of-tree PyTorch distributed backend (`"tbccl"`) over an installed TBCCL runtime (libtbccl C ABI 1, wire protocol 3). Not NCCL feature parity.
+> **Experimental.** An out-of-tree PyTorch distributed backend (`"tbccl"`) over an installed TBCCL runtime (libtbccl C ABI 1, wire protocol 4). Not NCCL feature parity.
 > Validated tuple: torch-tbccl 0.2.0.dev0, **PyTorch 2.13.x**, **CPython 3.13**, Linux x86_64 (CPU + CUDA 13) and macOS arm64 (CPU + **MPS**, Phase 72). Anything else is untested.
 
 ```
@@ -88,8 +88,8 @@ Rejected with a clear `NotImplementedError` / `ValueError` before anything is co
 Not supported at all: FSDP (not validated), MPS tensors (PyTorch rejects them), fault recovery.
 
 **Rules that are not enforceable by the type system**
-* A collective and a point-to-point operation must not be in flight on the same process group at the same time (libtbccl shares one connection per peer between them; overlapping them corrupts data). The adapter refuses the overlap
-  with an error; wait for the earlier operations, or use separate process groups.
+* Collectives and point-to-point operations may be in flight on the same process group at the same time, in any relative order on each rank (libtbccl wire protocol 4 carries them on separate connections). The two contracts still hold inside each domain:
+  every rank issues collectives in the same order, and P2P messages match FIFO per peer and direction. Needs libtbccl >= the wire-4 runtime; a wheel built against an older prefix keeps the Phase 71 rule (do not overlap them).
 * `Work.wait(timeout)` raises on expiry but does not cancel the operation.
 * Rendezvous stays with PyTorch; retrying `init_process_group` over the same store after a failed bootstrap is not supported (use a fresh store).
 

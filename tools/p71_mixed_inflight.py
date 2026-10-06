@@ -1,4 +1,7 @@
-"""Characterization (not a test of a supported feature): a collective and a point-to-point operation IN FLIGHT AT THE SAME TIME on one group.
+"""NOTE (Phase 73): this is the Phase 71 reproducer of the old behaviour. With libtbccl wire 4 the overlap modes now succeed (see tests/test_mixed_domain.py); the pre-repair
+behaviour is recorded in docs/data/phase71/mixed_inflight_before_guard.txt.
+
+Characterization (not a test of a supported feature): a collective and a point-to-point operation IN FLIGHT AT THE SAME TIME on one group.
 
 TBCCL's contract: collectives and P2P are independent ordering domains over one peer lane, so they must not overlap on one communicator. This shows what the unsupported
 overlap does (a bounded structured error, not a hang and not silent corruption) next to the supported pattern (wait in between).

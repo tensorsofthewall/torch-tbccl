@@ -3,7 +3,7 @@ Launch with torchrun on each host (static c10d rendezvous, one process per host)
 (add --local-addr 127.0.0.1 if the host name does not resolve).
 
     --devices D0,D1      the device of rank 0 and rank 1 (cpu | cuda | mps), e.g. cuda,mps (Linux rank 0 on CUDA, Mac rank 1 on MPS) or mps,cuda (reversed)
-    --steps S[,S...]     p2p_one (rank 0 -> rank 1), p2p_rev (rank 1 -> rank 0), p2p_both (simultaneous isend/irecv), allreduce (float32 4 KiB/1 MiB/16 MiB, then float16
+    --steps S[,S...]     p2p_one (rank 0 -> rank 1), p2p_rev (rank 1 -> rank 0), p2p_both (simultaneous isend/irecv), mixed (async all_reduce + isend/irecv in flight together, same and opposite relative order), allreduce (float32 4 KiB/1 MiB/16 MiB, then float16
                          and bfloat16 1 MiB at world size 2), broadcast, all_gather. Collectives and P2P are never in flight together: each step waits for its Works.
 
 Sizes 4 KiB / 1 MiB / 16 MiB, a few repetitions, every received payload bit-compared; after every operation the local tensor must still be on this rank's device. No saturation loop.
@@ -106,6 +106,34 @@ def allreduce():
     return res
 
 
+def mixed():
+    """An async fp32 all_reduce and a simultaneous isend/irecv pair in flight together on one group, 4 KiB and 1 MiB, with the SAME relative order on both ranks and
+    with the two OPPOSITE orders (rank 0 collective first / rank 1 P2P first, then the mirror). Collectives and P2P are independent ordering domains in libtbccl wire 4."""
+    res = {}
+    for label, n in (("4KiB", 1 << 10), ("1MiB", 1 << 18)):
+        for order in ("same", "opposite", "mirror"):
+            def once():
+                x = (pattern(0, n) % 5 + rank).to(dev)
+                mine, theirs = pattern(rank, n, k=7).to(dev), torch.zeros(n, device=dev)
+                coll_first = {"same": True, "opposite": rank == 0, "mirror": rank == 1}[order]
+                works = []
+                p2p = lambda: works.extend([dist.irecv(theirs, src=peer), dist.isend(mine, dst=peer)])  # noqa: E731
+                if coll_first:
+                    works.append(dist.all_reduce(x, async_op=True))
+                    p2p()
+                else:
+                    p2p()
+                    works.append(dist.all_reduce(x, async_op=True))
+                for w in works:
+                    w.wait()
+                on_device(x, f"mixed all_reduce {label} {order}")
+                on_device(theirs, f"mixed recv {label} {order}")
+                check(torch.equal(x.cpu(), (pattern(0, n) % 5) * 2 + 1), f"mixed all_reduce {label} {order}")
+                check(bits_equal(theirs, pattern(peer, n, k=7)), f"mixed P2P payload {label} {order}")
+            res[f"{label}_{order}"] = {"ms": timed(once)}
+    return res
+
+
 def broadcast():
     res = {}
     for root in (0, 1):
@@ -130,7 +158,7 @@ def all_gather():
     return {"1MiB": {"ms": timed(once)}}
 
 
-STEPS = {"p2p_one": lambda: p2p_one(0, "p2p_one"), "p2p_rev": lambda: p2p_one(1, "p2p_rev"), "p2p_both": p2p_both, "allreduce": allreduce, "broadcast": broadcast, "all_gather": all_gather}
+STEPS = {"p2p_one": lambda: p2p_one(0, "p2p_one"), "p2p_rev": lambda: p2p_one(1, "p2p_rev"), "p2p_both": p2p_both, "allreduce": allreduce, "broadcast": broadcast, "all_gather": all_gather, "mixed": mixed}
 for s in a.steps.split(","):
     dist.barrier()  # separates the steps: every earlier Work is complete here
     out["steps"][s] = STEPS[s]()

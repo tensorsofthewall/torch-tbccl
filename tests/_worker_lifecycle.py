@@ -14,6 +14,7 @@ import torch
 import torch.distributed as dist
 
 import torch_tbccl  # noqa: F401
+from _procinfo import fd_count, os_threads, rss_mb
 
 mode = os.environ["TEST_MODE"]
 rank, world = int(os.environ["RANK"]), int(os.environ["WORLD_SIZE"])
@@ -25,11 +26,9 @@ def snapshot():
     gc.collect()
     if dev.type == "cuda":
         torch.cuda.synchronize()
-    with open("/proc/self/statm") as f:
-        rss = int(f.read().split()[1]) * os.sysconf("SC_PAGE_SIZE") / 2**20
     import threading
 
-    snap = {"fds": len(os.listdir("/proc/self/fd")), "os_threads": len(os.listdir("/proc/self/task")), "py_threads": threading.active_count(), "rss_mb": round(rss, 1)}
+    snap = {"fds": fd_count(), "os_threads": os_threads(), "py_threads": threading.active_count(), "rss_mb": round(rss_mb(), 1)}
     if dev.type == "cuda":
         snap["cuda_alloc_mb"] = round(torch.cuda.memory_allocated() / 2**20, 2)
         snap["cuda_reserved_mb"] = round(torch.cuda.memory_reserved() / 2**20, 2)

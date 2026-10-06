@@ -16,6 +16,7 @@ import torch
 import torch.distributed as dist
 
 import torch_tbccl  # noqa: F401
+from _procinfo import fd_count, os_threads, rss_mb
 
 mode = os.environ["TEST_MODE"]
 N = int(os.environ.get("N", "8"))
@@ -31,19 +32,6 @@ def payload(sender, k, n):
 
 def sizes(k):
     return 4 + 37 * k + (k % 5) * 1024  # distinct, mostly small, a few KiB
-
-
-def nfds():
-    return len(os.listdir("/proc/self/fd"))
-
-
-def nthreads():
-    return len(os.listdir("/proc/self/task"))
-
-
-def rss_mb():
-    with open("/proc/self/statm") as f:
-        return int(f.read().split()[1]) * os.sysconf("SC_PAGE_SIZE") / 2**20
 
 
 def p2p_batch(n):
@@ -126,12 +114,12 @@ elif mode == "growth":
         p2p_batch(32)
         allreduce_batch(32)
     gc.collect()
-    f0, t0, r0 = nfds(), nthreads(), rss_mb()
+    f0, t0, r0 = fd_count(), os_threads(), rss_mb()
     for _ in range(25):
         p2p_batch(32)
         allreduce_batch(32)
     gc.collect()
-    f1, t1, r1 = nfds(), nthreads(), rss_mb()
+    f1, t1, r1 = fd_count(), os_threads(), rss_mb()
     print(f"rank {rank} growth: fds {f0}->{f1} threads {t0}->{t1} rss {r0:.1f}->{r1:.1f} MB", flush=True)
     assert f1 == f0 and t1 == t0, (f0, f1, t0, t1)
     assert r1 - r0 < 40, f"RSS grew by {r1 - r0:.1f} MB over 25 batches of 64 operations"

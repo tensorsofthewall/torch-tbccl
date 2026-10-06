@@ -16,10 +16,13 @@ namespace torch_tbccl
 {
 
 inline constexpr const char *kLocalEndpointEnv = "TBCCL_LOCAL_ENDPOINT";
-// v2 (Phase 50): one record per rank holding its ACTUAL control and data endpoint, plus one shared communicator id. The v1 records (a single
-// host:port with an implicit data port) are no longer written or read.
-inline constexpr const char *kEndpointKeyPrefix = "torch_tbccl/v2/endpoint/";
-inline constexpr const char *kCommunicatorIdKey = "torch_tbccl/v2/communicator_id";
+// v3 (Phase 71): one record per rank holding its ACTUAL control and data endpoint, plus one shared communicator id, under a per-generation
+// namespace "torch_tbccl/v3/g<generation>/{endpoint/<rank>,communicator_id}". Every rank joins a group exactly once by incrementing kJoinCounterKey, so
+// generation = (joins - 1) / world_size is the same on every rank and differs between successive groups created over the SAME store (a persistent store
+// such as torchrun's, where init_process_group -> destroy_process_group -> init_process_group reuses the key prefix): a later group never reads an earlier
+// group's records. v2 used fixed keys and mixed up generations after a re-init.
+inline constexpr const char *kJoinCounterKey = "torch_tbccl/v3/joined";
+inline constexpr const char *kGenerationPrefix = "torch_tbccl/v3/g";
 
 // Parses "host:port". Throws c10::ValueError (invalid argument) on an
 // empty host, missing/non-numeric/out-of-range port, or IPv6-style

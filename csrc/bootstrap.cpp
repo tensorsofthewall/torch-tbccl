@@ -76,7 +76,6 @@ tbccl::CommunicatorOptions bootstrap_options(
     std::chrono::milliseconds timeout,
     const tbccl::CommunicatorPeerEndpoint &local)
 {
-    auto key_for = [](int r) { return std::string(kEndpointKeyPrefix) + std::to_string(r); };
     const auto bytes = [](const std::string &s) { return std::vector<uint8_t>(s.begin(), s.end()); };
 
     tbccl::CommunicatorOptions opts;
@@ -104,11 +103,17 @@ tbccl::CommunicatorOptions bootstrap_options(
     }
     opts.listeners = listeners;
 
+    // Joining is the first Store access, after local validation and the listener bind, so a rank that fails locally consumes no generation slot.
+    const std::int64_t joined = store->add(kJoinCounterKey, 1);
+    const std::string ns = std::string(kGenerationPrefix) + std::to_string((joined - 1) / world_size) + "/";
+    const std::string id_key = ns + "communicator_id";
+    auto key_for = [&ns](int r) { return ns + "endpoint/" + std::to_string(r); };
+
     // The shared communicator id: rank 0 generates it, everyone reads it.
-    if (rank == 0) store->set(kCommunicatorIdKey, bytes(tbccl::CommunicatorId::generate().to_hex()));
+    if (rank == 0) store->set(id_key, bytes(tbccl::CommunicatorId::generate().to_hex()));
     store->set(key_for(rank), bytes(mine));
 
-    std::vector<std::string> keys{kCommunicatorIdKey};
+    std::vector<std::string> keys{id_key};
     for (int r = 0; r < world_size; ++r) keys.push_back(key_for(r));
     try
     {
@@ -122,7 +127,7 @@ tbccl::CommunicatorOptions bootstrap_options(
     }
 
     {
-        const auto raw = store->get(kCommunicatorIdKey);
+        const auto raw = store->get(id_key);
         opts.communicator_id = tbccl::CommunicatorId::from_hex(std::string(raw.begin(), raw.end()));
     }
     for (int r = 0; r < world_size; ++r)

@@ -58,6 +58,8 @@ def expected_status(op, dtype, world):
         return "PASS"
     if op == "barrier":
         return "PASS"
+    if op == "batch_isend_irecv":
+        return "NA" if world < 2 else "PASS"
     if op in ("all_gather_object", "broadcast_object_list"):
         return "REJECTED" if world < 2 else "PASS"
     if op == "gather_object":
@@ -232,6 +234,16 @@ def worker(a):
             ok = torch.equal(t.cpu().to(cmp_t), want.to(cmp_t))
         need(ok, f"{opname} mismatch got {t.cpu().reshape(-1)[:4].tolist()} want {want.reshape(-1)[:4].tolist()}")
 
+    def case_batch():
+        if world < 2:
+            return "NA"
+        nxt, prv = (rank + 1) % world, (rank - 1) % world
+        for n in (1, 1000, 1 << 18):
+            x, y = pattern(rank, (n,), torch.float32).to(dev), torch.zeros(n).to(dev)
+            for req in dist.batch_isend_irecv([dist.P2POp(dist.isend, x, nxt), dist.P2POp(dist.irecv, y, prv)]):
+                req.wait()
+            need(eq_bytes(y, pattern(prv, (n,), torch.float32)), f"batch ring n={n}")
+
     def case_barrier(*_):
         for _ in range(3):
             dist.barrier()
@@ -295,9 +307,10 @@ def worker(a):
             except Exception as e:  # noqa: BLE001
                 if "contiguous" not in str(e):
                     raise
+                seen = f"{type(e).__name__}: {str(e).splitlines()[0][:220]}"
             else:
                 raise Wrong(f"{vname}: accepted a non-contiguous tensor")
-        return "REJECTED:contiguous required (clear error, no copy)"
+        return "REJECTED:" + seen
 
     def case_inplace(opname):
         if world < 2:
@@ -338,6 +351,7 @@ def worker(a):
         for opn in REDUCE_OPS:
             cases.append((f"all_reduce {opn}", dtn, "", lambda dtn=dtn, opn=opn: over_sizes(lambda lb, sp: case_allreduce(dtn, lb, sp, opn))))
     cases.append(("barrier", "-", "", case_barrier))
+    cases.append(("batch_isend_irecv", "float32", "", case_batch))
     for k in ("all_gather_object", "broadcast_object_list", "gather_object"):
         cases.append((k, "-", "", lambda k=k: case_object(k)))
     for opn in UNSUPPORTED_OPS:
@@ -517,6 +531,20 @@ def cmd_render(a):
            "Cell = result of the whole case (all 9 payload shapes, all root/destination variants). `pass (n)`: n dtype cases passed. Devmodes: cpu = all ranks CPU; "
            "cuda0 = rank 0 on CUDA, others CPU (heterogeneous); cudaall = every rank on the one GPU (shared, not multi-GPU).\n"]
     byte_ops = ["send/recv", "isend/irecv", "broadcast", "all_gather", "gather"]
+    out.append("## Master matrix (the plan's minimum rows)\n")
+    out.append("CUDA = rank 0 on CUDA with the other ranks on CPU (cuda0) and every rank on the one GPU (cudaall); `pass` only when BOTH pass, otherwise the two results are shown.\n")
+    out.append("| Operation | Device | dtype | " + " | ".join(f"W{w}" for w in worlds) + " |\n|---|---|---|" + "---:|" * len(worlds))
+    master = [("send/recv", "bfloat16"), ("broadcast", "float32"), ("all_reduce SUM", "float32"), ("all_reduce SUM", "bfloat16"), ("all_gather", "float32"), ("gather", "float32"), ("barrier", "-")]
+    for op, dt in master:
+        for dev, modes in (("CPU", ["cpu"]), ("CUDA", ["cuda0", "cudaall"])):
+            if not all(m in devmodes for m in modes):
+                continue
+            cells = []
+            for w in worlds:
+                got = [cell(op, dt, m, w) for m in modes]
+                cells.append(got[0] if len(set(got)) == 1 else " / ".join(got))
+            out.append(f"| {op} | {dev} | {dt} | " + " | ".join(cells) + " |")
+    out.append("")
     out.append("## Operations x world size, byte dtypes (12 dtypes: " + ", ".join(BYTE_DTYPES) + ")\n")
     out.append("| Operation | Devmode | " + " | ".join(f"W{w}" for w in worlds) + " |\n|---|---|" + "---:|" * len(worlds))
     for op in byte_ops:
@@ -528,7 +556,7 @@ def cmd_render(a):
         for dm in devmodes:
             out.append(f"| all_reduce {opn} | {dm} | " + " | ".join(agg([f"all_reduce {opn}"], REDUCE_DTYPES, dm, w) for w in worlds) + " |")
     out.append("\n## Other\n")
-    other = ["barrier", "all_gather_object", "broadcast_object_list", "gather_object"] + UNSUPPORTED_OPS + [f"noncontiguous {x}" for x in ("all_reduce", "broadcast", "send_recv", "all_gather")] + [f"in-place {x}" for x in ("all_reduce", "broadcast", "recv")]
+    other = ["barrier", "batch_isend_irecv", "all_gather_object", "broadcast_object_list", "gather_object"] + UNSUPPORTED_OPS + [f"noncontiguous {x}" for x in ("all_reduce", "broadcast", "send_recv", "all_gather")] + [f"in-place {x}" for x in ("all_reduce", "broadcast", "recv")]
     out.append("| Operation | Devmode | " + " | ".join(f"W{w}" for w in worlds) + " |\n|---|---|" + "---:|" * len(worlds))
     for op in other:
         for dm in devmodes:

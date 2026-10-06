@@ -163,8 +163,14 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
     try
     {
         // In place: same BufferView as send and receive; no intermediate tensor.
+        tbccl::BufferView view = buf.view;
+        // MPS shared storage is ordinary CPU-visible memory. libtbccl's MetalShared reduction table is narrower than Host's (four element types), so a dtype it
+        // lacks is presented as Host: same pointer, same provider, no copy.
+        if (view.memory_kind == tbccl::MemoryKind::MetalShared &&
+            !comm_->capabilities().supports_collective_all_reduce(tbccl::MemoryKind::MetalShared, buf.datatype, op))
+            view.memory_kind = tbccl::MemoryKind::Host;
         if (state->trace) state->trace->before_submit_ns = trace_now_ns();
-        state->work = comm_->all_reduce(buf.view, buf.view, buf.count, buf.datatype, op, buf.context);
+        state->work = comm_->all_reduce(view, view, buf.count, buf.datatype, op, buf.context);
         if (state->trace) state->trace->return_ns = trace_now_ns();
         if (force_sync_allreduce_) state->work->wait();
     }

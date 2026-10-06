@@ -98,14 +98,26 @@ TbcclBuffer to_tbccl_buffer(const at::Tensor &t, bool bytes_only)
         t.is_contiguous(), "torch-tbccl: invalid argument: tensor must be contiguous (no implicit copy is made)");
 
     out.count = static_cast<std::size_t>(t.numel());
-    out.view.data = t.numel() == 0 ? nullptr : t.data_ptr();
     out.view.bytes = static_cast<std::size_t>(t.nbytes());
 #ifdef TORCH_TBCCL_WITH_MPS
     if (is_mps)
     {
-        TORCH_CHECK_NOT_IMPLEMENTED(false, "torch-tbccl: unsupported operation: MPS adapter not implemented");
+        // An MPS data_ptr() is the MTLBuffer handle plus a byte offset, not an address. Shared storage is ordinary CPU-visible memory to TBCCL (MemoryKind::MetalShared,
+        // the same provider as Host). Everything PyTorch queued on the device is finished first (device-wide), so TBCCL never reads a half-written producer and never
+        // races a queued kernel that still writes a receive destination.
+        out.view.data = nullptr;
+        if (t.numel() > 0)
+        {
+            mps_synchronize();
+            out.view.data = mps_host_pointer(t);
+        }
+        out.view.memory_kind = tbccl::MemoryKind::MetalShared;
+        out.view.device_ordinal = -1;
+        out.context = tbccl::ExecutionContext{tbccl::ExecutionContextKind::Host, nullptr};
+        return out;
     }
 #endif
+    out.view.data = t.numel() == 0 ? nullptr : t.data_ptr();
     if (!is_cuda)
     {
         out.view.memory_kind = tbccl::MemoryKind::Host;

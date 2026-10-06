@@ -17,6 +17,6 @@ def test_readme_quick_start_runs_under_torchrun(tmp_path):
     script = tmp_path / "quick_start.py"
     script.write_text(code)
     env = dict(os.environ, TBCCL_LOCAL_ENDPOINT="127.0.0.1:0", OMP_NUM_THREADS="2")
-    p = subprocess.run([TORCHRUN, "--standalone", "--nproc-per-node", "2", str(script)], env=env, capture_output=True, text=True, timeout=120, cwd=tmp_path)
+    p = subprocess.run([TORCHRUN, "--standalone", "--local-addr", "127.0.0.1", "--nproc-per-node", "2", str(script)], env=env, capture_output=True, text=True, timeout=120, cwd=tmp_path)
     assert p.returncode == 0, p.stdout + p.stderr[-2000:]
     assert p.stdout.count("tensor([3.])") == 2, p.stdout

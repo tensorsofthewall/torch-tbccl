@@ -33,6 +33,8 @@ TBCCL_LOCAL_ENDPOINT=127.0.0.1:0 torchrun --standalone --nproc-per-node 2 your_s
 TBCCL_LOCAL_ENDPOINT=127.0.0.1:0 torchrun --standalone --nproc-per-node 2 examples/ddp_mlp.py   # DDP, synthetic data, checked against a single-process reference
 ```
 
+(torchrun registers the host's FQDN with its rendezvous; if the machine's hostname does not resolve, add `--local-addr 127.0.0.1` for single-machine runs.)
+
 Across two hosts use PyTorch's normal rendezvous and give each host its own address in `TBCCL_LOCAL_ENDPOINT`:
 
 ```sh

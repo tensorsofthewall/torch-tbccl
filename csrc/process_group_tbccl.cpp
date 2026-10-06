@@ -158,7 +158,6 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
 
     std::lock_guard<std::mutex> lock(mutex_);
     require_peers(state->op_name.c_str());
-    check_no_overlap(Domain::Collective, state->op_name.c_str());
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
@@ -178,7 +177,6 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allreduce(
     {
         throw_tbccl_error("allreduce", e.what());
     }
-    track(Domain::Collective, state);
     completion_->enqueue(state);
     return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::ALLREDUCE, state);
 }
@@ -221,7 +219,6 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::broadcast(
 
     std::lock_guard<std::mutex> lock(mutex_);
     require_peers(state->op_name.c_str());
-    check_no_overlap(Domain::Collective, state->op_name.c_str());
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
@@ -233,7 +230,6 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::broadcast(
     {
         throw_tbccl_error("broadcast", e.what());
     }
-    track(Domain::Collective, state);
     completion_->enqueue(state);
     return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::BROADCAST, state);
 }
@@ -277,7 +273,6 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather(
 
     std::lock_guard<std::mutex> lock(mutex_);
     require_peers(state->op_name.c_str());
-    check_no_overlap(Domain::Collective, state->op_name.c_str());
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
@@ -289,7 +284,6 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::allgather(
     {
         throw_tbccl_error("allgather", e.what());
     }
-    track(Domain::Collective, state);
     completion_->enqueue(state);
     return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::ALLGATHER, state);
 }
@@ -341,7 +335,6 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::barrier(const c10d::BarrierOpt
     state->future = c10::make_intrusive<c10::ivalue::Future>(c10::ListType::create(c10::TensorType::get()));
     std::lock_guard<std::mutex> lock(mutex_);
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
-    check_no_overlap(Domain::Collective, state->op_name.c_str());
     try
     {
         state->work = comm_->barrier();
@@ -350,7 +343,6 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::barrier(const c10d::BarrierOpt
     {
         throw_tbccl_error("barrier", e.what());
     }
-    track(Domain::Collective, state);
     completion_->enqueue(state);
     return c10::make_intrusive<WorkTBCCL>(getRank(), c10d::OpType::BARRIER, state);
 }
@@ -455,7 +447,6 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::p2p(std::vector<at::Tensor> &t
     const std::size_t count = buf.view.bytes;
     std::lock_guard<std::mutex> lock(mutex_);
     require_peers(state->op_name.c_str());
-    check_no_overlap(Domain::P2P, state->op_name.c_str());
     TORCH_CHECK(comm_ != nullptr, "torch-tbccl: communicator failure: process group has been shut down");
     try
     {
@@ -468,45 +459,11 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::p2p(std::vector<at::Tensor> &t
     {
         throw_tbccl_error(name, e.what());
     }
-    track(Domain::P2P, state);
     completion_->enqueue(state);
     return c10::make_intrusive<WorkTBCCL>(getRank(), op, state);
 }
 
 // Collectives need at least two ranks; a one-rank group rejects them. Called under mutex_.
-void ProcessGroupTBCCL::check_no_overlap(Domain mine, const char *op)
-{
-    auto &other = mine == Domain::Collective ? p2p_in_flight_ : collective_in_flight_;
-    std::size_t live = 0;
-    for (auto it = other.begin(); it != other.end();)
-    {
-        auto s = it->lock();
-        if (!s || s->is_completed())
-            it = other.erase(it);
-        else
-        {
-            ++live;
-            ++it;
-        }
-    }
-    TORCH_CHECK_NOT_IMPLEMENTED(
-        live == 0, "torch-tbccl: unsupported operation: ", op, " submitted while ", live, mine == Domain::Collective ? " point-to-point" : " collective",
-        " operation(s) are still in flight on this process group (rank ", getRank(),
-        "). TBCCL collectives and point-to-point transfers share one connection per peer and must not overlap; wait() the earlier operations first, "
-        "or use a separate process group for each kind");
-}
-
-void ProcessGroupTBCCL::track(Domain mine, const std::shared_ptr<WorkState> &state)
-{
-    auto &mineList = mine == Domain::Collective ? collective_in_flight_ : p2p_in_flight_;
-    for (auto it = mineList.begin(); it != mineList.end();)
-    {
-        auto s = it->lock();
-        it = (!s || s->is_completed()) ? mineList.erase(it) : std::next(it);
-    }
-    mineList.push_back(state);
-}
-
 void ProcessGroupTBCCL::require_peers(const char *op) const
 {
     TORCH_CHECK_NOT_IMPLEMENTED(

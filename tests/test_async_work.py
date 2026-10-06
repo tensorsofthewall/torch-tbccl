@@ -28,7 +28,8 @@ import torch  # noqa: E402
 import torch_tbccl  # noqa: E402
 
 HAS_CUDA = torch.cuda.is_available() and torch_tbccl.compiled_features()["cuda"]
-DEVICES = ["", pytest.param("cuda", marks=pytest.mark.skipif(not HAS_CUDA, reason="needs CUDA"))]
+HAS_MPS = torch.backends.mps.is_available() and torch_tbccl.compiled_features()["mps"]
+DEVICES = ["", pytest.param("cuda", marks=pytest.mark.skipif(not HAS_CUDA, reason="needs CUDA")), pytest.param("mps", marks=pytest.mark.skipif(not HAS_MPS, reason="needs MPS"))]
 
 
 def run71(run_two_ranks, mode, n=8, device="", timeout=180):

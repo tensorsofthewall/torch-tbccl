@@ -30,7 +30,7 @@ BOUND = float(os.environ.get("BOUND", "20"))
 dist.init_process_group("tbccl", timeout=timedelta(seconds=60))
 rank, world = dist.get_rank(), dist.get_world_size()
 store = dist.distributed_c10d._get_default_store()
-dev = torch.device("cuda" if os.environ.get("DEVICE_RANK0") == "cuda" and rank == 0 else "cpu")
+dev = torch.device(os.environ["DEVICE_RANK0"] if os.environ.get("DEVICE_RANK0") in ("cuda", "mps") and rank == 0 else "cpu")
 MB = 1 << 20
 
 

@@ -121,6 +121,8 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.multiprocess)
         if "cuda" in item.nodeid.lower():
             item.add_marker(pytest.mark.cuda)
+        if "mps" in item.nodeid.lower():
+            item.add_marker(pytest.mark.mps)
         if "ddp" in item.nodeid.lower():
             item.add_marker(pytest.mark.ddp)
         if "physical" in item.keywords and not config.getoption("--physical"):

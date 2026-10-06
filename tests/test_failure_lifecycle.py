@@ -8,7 +8,8 @@ import torch_tbccl
 
 pytestmark = pytest.mark.multiprocess
 HAS_CUDA = torch.cuda.is_available() and torch_tbccl.compiled_features()["cuda"]
-DEVICES = ["", pytest.param("cuda", marks=pytest.mark.skipif(not HAS_CUDA, reason="needs CUDA"))]
+HAS_MPS = torch.backends.mps.is_available() and torch_tbccl.compiled_features()["mps"]
+DEVICES = ["", pytest.param("cuda", marks=pytest.mark.skipif(not HAS_CUDA, reason="needs CUDA")), pytest.param("mps", marks=pytest.mark.skipif(not HAS_MPS, reason="needs MPS"))]
 
 
 def survivors_ok(results, dead=(), dead_rc=9):

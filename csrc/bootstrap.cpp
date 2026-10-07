@@ -26,7 +26,7 @@ tbccl::CommunicatorPeerEndpoint parse_endpoint(const std::string &text, bool all
     TORCH_CHECK_VALUE(!host.empty(), "torch-tbccl: invalid argument: endpoint '", text, "' has an empty host");
     TORCH_CHECK_VALUE(
         host.find(':') == std::string::npos,
-        "torch-tbccl: invalid argument: endpoint '", text, "': IPv6 literals are not supported in Phase 42");
+        "torch-tbccl: invalid argument: endpoint '", text, "': IPv6 literals are not supported");
     TORCH_CHECK_VALUE(
         !port_text.empty() && port_text.size() <= 5 &&
             port_text.find_first_not_of("0123456789") == std::string::npos,

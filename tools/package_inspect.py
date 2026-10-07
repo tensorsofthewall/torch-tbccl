@@ -1,8 +1,10 @@
 """Inspect a built torch-tbccl wheel WITHOUT importing it: required members, metadata, the compiled extension's dynamic dependencies and runtime search path.
 
-    python tools/package_inspect.py dist/torch_tbccl-*.whl [--json OUT]
+    python tools/package_inspect.py dist/torch_tbccl-*.whl [--json OUT] [--allow-local-platform]
 
-Fails (exit 1) on: a missing module / compiled extension / metadata, a wheel tag that does not match the running platform, an extension that references the build
+Fails (exit 1) on: a missing module / compiled extension / metadata / licence, a wheel tag that is not valid for publication (Linux: manylinux_*, never a bare linux_*;
+macOS: macosx_*_arm64) or does not match the running platform, a version that disagrees with torch_tbccl/_version.py, development files or build-machine paths in any member,
+an extension that references the build
 directory (absolute RUNPATH/RPATH entries outside system library directories, or an absolute install name), or metadata that does not pin the torch series.
 It also fails on a run-time dependency on libtbccl, on Apple frameworks in a non-macOS wheel, and reports whether the macOS wheel links Metal (the MPS adapter).
 What the wheel needs at run time is printed: the shared libraries the extension asks the loader for, and where it may look for them.
@@ -18,6 +20,12 @@ import zipfile
 
 REQUIRED = ["torch_tbccl/__init__.py", "torch_tbccl/_version.py", "torch_tbccl/info.py"]
 SYSTEM_DIRS = ("/usr/lib", "/usr/lib64", "/lib", "/lib64", "/usr/local/cuda", "/opt/cuda", "/usr/local/lib")
+
+
+def parse_tags(filename):
+    """(python, abi, [platform, ...]) from a wheel file name; the platform part may be a dotted compressed set."""
+    parts = os.path.basename(filename)[:-4].split("-")
+    return parts[-3], parts[-2], parts[-1].split(".")
 
 
 def run(cmd):
@@ -48,6 +56,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("wheel")
     ap.add_argument("--json", default=None)
+    ap.add_argument("--allow-local-platform", action="store_true", help="accept a bare linux_* platform tag (a locally built wheel; never for publication)")
     a = ap.parse_args()
     problems, report = [], {"wheel": os.path.basename(a.wheel)}
     z = zipfile.ZipFile(a.wheel)
@@ -69,11 +78,30 @@ def main():
     report["requires_python"] = (re.search(r"^Requires-Python: (.+)$", text, re.M) or [None, None])[1]
     if not any(r.startswith("torch<2.14") or r.startswith("torch>=2.13") for r in report["requires_dist"]):
         problems.append(f"metadata does not pin the torch series: {report['requires_dist']}")
-    tag = re.search(r"-(cp\d+)-(cp\d+)-(\w+)\.whl$", a.wheel)
-    report["tag"] = tag.groups() if tag else None
+    py_tag, abi_tag, plats = parse_tags(a.wheel)
+    report["tag"] = [py_tag, abi_tag, plats]
     want_py = f"cp{sys.version_info.major}{sys.version_info.minor}"
-    if not tag or tag.group(1) != want_py:
-        problems.append(f"wheel python tag {tag.group(1) if tag else None} != running {want_py}")
+    if py_tag != want_py or abi_tag != want_py:
+        problems.append(f"wheel python/abi tag {py_tag}/{abi_tag} != running {want_py}")
+    if sys.platform == "darwin":
+        if not plats or not all(re.fullmatch(r"macosx_\d+_\d+_arm64", p) for p in plats):
+            problems.append(f"macOS wheel platform tag must be macosx_<major>_<minor>_arm64, got {plats}")
+    elif not a.allow_local_platform:
+        if not plats or not all(p.startswith("manylinux_") for p in plats):
+            problems.append(f"Linux wheel platform tag must be manylinux_*, got {plats} (a bare linux_x86_64 wheel cannot be published)")
+    if not any(re.fullmatch(r".*\.dist-info/licenses/LICENSE", n) or re.fullmatch(r".*\.dist-info/LICENSE", n) for n in names):
+        problems.append("the licence file is not in the wheel")
+    ver_in_name = os.path.basename(a.wheel).split("-")[1]
+    ver_src = re.search(r'__version__ = "([^"]+)"', z.read("torch_tbccl/_version.py").decode()) if "torch_tbccl/_version.py" in names else None
+    if not ver_src or ver_src.group(1) != ver_in_name:
+        problems.append(f"wheel version {ver_in_name} != torch_tbccl/_version.py {ver_src.group(1) if ver_src else None}")
+    for n in names:
+        if re.match(r"(tests|tools|docs|examples|csrc|\.github)/", n) or n.endswith((".pyc", ".o", ".a")):
+            problems.append(f"development file in the wheel: {n}")
+        if not n.endswith((".so", ".pyc")):
+            private = re.findall(rb"/(?:home|Users|mnt|tmp)/[\w.\-]+", z.read(n))
+            if private:
+                problems.append(f"{n} contains private or build paths: {sorted(set(x.decode() for x in private))}")
     if not any(n.endswith(".dist-info/WHEEL") for n in names):
         problems.append("missing WHEEL file")
 

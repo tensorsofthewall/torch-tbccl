@@ -165,7 +165,7 @@ def main():
     p.add_argument("--hidden", type=int, default=16)
     p.add_argument("--lr", type=float, default=0.05)
     p.add_argument("--tol", type=float, default=1e-4)
-    p.add_argument("--side-p2p", type=int, default=0, help="Phase 73: an application thread exchanges this many deterministic 256 KiB messages (isend/irecv, ring) on the same group while DDP trains")
+    p.add_argument("--side-p2p", type=int, default=0, help="an application thread exchanges this many deterministic 256 KiB messages (isend/irecv, ring) on the same group while DDP trains")
     p.add_argument("--cross-device-tol", type=float, default=1e-6, help="max abs parameter difference between ranks on different device types when one is MPS")
     p.add_argument("--bucket-cap-mb", type=float, default=25.0)
     p.add_argument("--devices", default="cpu")

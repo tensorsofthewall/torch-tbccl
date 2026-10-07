@@ -70,7 +70,7 @@ def checks(device):
 def child():
     import torch_tbccl
 
-    res = {"rank": int(os.environ["RANK"]), "checks": checks(os.environ["P71_DEVICE"]), "torch_tbccl_file": torch_tbccl.__file__}
+    res = {"rank": int(os.environ["RANK"]), "checks": checks(os.environ["TORCH_TBCCL_CHECK_DEVICE"]), "torch_tbccl_file": torch_tbccl.__file__}
     print("CHILD " + json.dumps(res), flush=True)
 
 
@@ -105,7 +105,7 @@ def parent():
         port = s.getsockname()[1]
     procs = []
     for rank in range(2):
-        env = dict(os.environ, MASTER_ADDR="127.0.0.1", MASTER_PORT=str(port), RANK=str(rank), WORLD_SIZE="2", TBCCL_LOCAL_ENDPOINT="127.0.0.1:0", P71_DEVICE=a.device)
+        env = dict(os.environ, MASTER_ADDR="127.0.0.1", MASTER_PORT=str(port), RANK=str(rank), WORLD_SIZE="2", TBCCL_LOCAL_ENDPOINT="127.0.0.1:0", TORCH_TBCCL_CHECK_DEVICE=a.device)
         procs.append(subprocess.Popen([sys.executable, os.path.abspath(__file__), "--child"], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True))
     results = []
     for p in procs:

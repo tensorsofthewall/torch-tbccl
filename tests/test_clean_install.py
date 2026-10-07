@@ -1,7 +1,7 @@
 """Packaging discipline. A wheel is built from the source tree, inspected without importing it, installed into a brand-new venv, and exercised from an unrelated
 directory with no PYTHONPATH. Editable installs hide packaging bugs (the vLLM 0.31 alignment work found one in vllm-tbccl); this cannot.
 
-Needs TBCCL_ROOT (an installed TBCCL prefix) and the `build` module; the clean-venv part also needs `uv` and the package index/cache for torch (set P71_CLEAN_INSTALL=1).
+Needs TBCCL_ROOT (an installed TBCCL prefix) and the `build` module; the clean-venv part also needs `uv` and the package index/cache for torch (set TORCH_TBCCL_TEST_CLEAN_INSTALL=1).
 """
 import glob
 import json
@@ -68,13 +68,13 @@ def test_unsupported_c_abi_prefix_fails_the_build_clearly(tmp_path):
 
 
 @needs_prefix
-@pytest.mark.skipif(os.environ.get("P71_CLEAN_INSTALL") != "1", reason="set P71_CLEAN_INSTALL=1 (creates a venv, installs torch from the index/cache)")
+@pytest.mark.skipif(os.environ.get("TORCH_TBCCL_TEST_CLEAN_INSTALL") != "1", reason="set TORCH_TBCCL_TEST_CLEAN_INSTALL=1 (creates a venv, installs torch from the index/cache)")
 @pytest.mark.parametrize("device", ["cpu", pytest.param("cuda", marks=pytest.mark.skipif(not torch.cuda.is_available(), reason="needs CUDA")), pytest.param("mps", marks=pytest.mark.skipif(not torch.backends.mps.is_available(), reason="needs MPS"))])
 def test_clean_venv_install_and_real_w2_collective(wheel, tmp_path, device):
-    if os.environ.get("P71_SCRATCH"):  # a torch+CUDA venv is ~6 GB: put it on a disk with room when /tmp is a small tmpfs
+    if os.environ.get("TORCH_TBCCL_TEST_SCRATCH"):  # a torch+CUDA venv is ~6 GB: put it on a disk with room when /tmp is a small tmpfs
         import tempfile
 
-        tmp_path = type(tmp_path)(tempfile.mkdtemp(dir=os.environ["P71_SCRATCH"]))
+        tmp_path = type(tmp_path)(tempfile.mkdtemp(dir=os.environ["TORCH_TBCCL_TEST_SCRATCH"]))
     venv = tmp_path / "venv"
     index = ["--index-url", "https://download.pytorch.org/whl/cu130", "--extra-index-url", "https://pypi.org/simple", "--index-strategy", "unsafe-best-match"]
     subprocess.run([UV, "venv", "--python", "3.13", str(venv)], check=True, capture_output=True)

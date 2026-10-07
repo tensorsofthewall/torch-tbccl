@@ -1,4 +1,4 @@
-"""The packaging and capability-audit work capability matrix: operation x device x dtype x world-size, measured through the public torch.distributed API.
+"""The capability matrix: operation x device x dtype x world-size, measured through the public torch.distributed API.
 
     python tools/capability_matrix.py run   --worlds 1,2,3,4 --devmodes cpu,cuda0,cudaall --out capability_matrix.json
     python tools/capability_matrix.py render capability_matrix.json >
@@ -19,7 +19,7 @@ Payloads are deterministic small integers (exact in every dtype, including bf16 
 bytes; reductions compare against a float64/int64 reference reduced on the CPU.
 
 devmodes: cpu (all ranks CPU), cuda0 (rank 0 on cuda:0, the others on CPU; heterogeneous), cudaall (every rank on cuda:0 - ONE physical GPU is shared, which
-validates the ProcessGroup path but is not multi-GPU), mps0 (the MPS adapter work, macOS: rank 0 on an MPS tensor, the others on CPU; world sizes 1 and 2 only; dtypes MPS cannot create
+validates the ProcessGroup path but is not multi-GPU), mps0 (macOS: rank 0 on an MPS tensor, the others on CPU; world sizes 1 and 2 only; dtypes MPS cannot create
 are recorded as NA with the reason).
 """
 import argparse
@@ -538,8 +538,8 @@ def cmd_render(a):
             return f"pass ({len(m)})"
         return "/".join(sorted(CELL[s] for s in st)) + f" ({sum(r['status'] == 'PASS' for r in m)}/{len(m)} pass)"
 
-    phase = "Phase 72 MPS" if devmodes == ["mps0"] else "Phase 71"
-    out = [f"# {phase} capability matrix (generated; do not edit)\n",
+    title = "MPS capability matrix" if devmodes == ["mps0"] else "Capability matrix"
+    out = [f"# {title} (generated; do not edit)\n",
            f"torch {doc['torch']}, torch-tbccl {doc['torch_tbccl']}, libtbccl {doc['runtime']}. Source: `tools/capability_matrix.py`, raw data `{os.path.basename(a.file)}`.\n",
            "Cell = result of the whole case (all 9 payload shapes, all root/destination variants). `pass (n)`: n dtype cases passed. Devmodes: cpu = all ranks CPU; "
            "cuda0 = rank 0 on CUDA, others CPU (heterogeneous); cudaall = every rank on the one GPU (shared, not multi-GPU); mps0 = rank 0 on MPS, others CPU. n/a for float64 and float8 on mps0: torch cannot create those tensors on MPS.\n"]

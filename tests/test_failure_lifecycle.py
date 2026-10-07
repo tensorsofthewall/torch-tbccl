@@ -13,7 +13,7 @@ DEVICES = ["", pytest.param("cuda", marks=pytest.mark.skipif(not HAS_CUDA, reaso
 
 
 def survivors_ok(results, dead=(), dead_rc=9):
-    if os.environ.get("P71_ECHO"):  # evidence capture: P71_ECHO=1 pytest -s tests/test_failure_lifecycle.py
+    if os.environ.get("TORCH_TBCCL_TEST_ECHO"):  # evidence capture: TORCH_TBCCL_TEST_ECHO=1 pytest -s tests/test_failure_lifecycle.py
         for rank, (rc, out) in enumerate(results):
             print(f"--- rank {rank} rc={rc}\n{out}")
     for rank, (rc, out) in enumerate(results):

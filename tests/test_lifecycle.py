@@ -19,7 +19,7 @@ SHUTDOWN_DEVICES = DEVICES + [pytest.param("mps", marks=pytest.mark.skipif(not H
 
 def ok(results):
     for rank, (rc, out) in enumerate(results):
-        if os.environ.get("P71_ECHO"):
+        if os.environ.get("TORCH_TBCCL_TEST_ECHO"):
             print(f"--- rank {rank} rc={rc}\n{out}")
         assert rc == 0, f"rank {rank}:\n{out}"
         assert out.strip().splitlines()[-1] == f"rank {rank} ok", out

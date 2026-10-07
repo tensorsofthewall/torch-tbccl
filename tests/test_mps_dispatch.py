@@ -35,7 +35,7 @@ def test_devices_reported():
 
 @pytest.mark.skipif(not torch.backends.mps.is_available(), reason="needs MPS")
 def test_without_the_shim_the_dispatcher_rejects_mps():
-    # the same call in a process that never imports torch_tbccl: the failure documented in phase72_c10d_mps_dispatch.md
+    # the same call in a process that never imports torch_tbccl: the failure described in docs/adr/0002-out-of-tree-mps-dispatch.md
     code = (
         "import torch, torch.distributed as d, os\n"
         "os.environ.update(MASTER_ADDR='127.0.0.1', MASTER_PORT='29755')\n"

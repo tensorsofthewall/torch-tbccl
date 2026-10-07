@@ -3,7 +3,7 @@ Launch with torchrun on each host (static c10d rendezvous, one process per host)
 (add --local-addr 127.0.0.1 if the host name does not resolve).
 
     --devices D0,D1      the device of rank 0 and rank 1 (cpu | cuda | mps), e.g. cuda,mps (Linux rank 0 on CUDA, Mac rank 1 on MPS) or mps,cuda (reversed)
-    --steps S[,S...]     p2p_one (rank 0 -> rank 1), p2p_rev (rank 1 -> rank 0), p2p_both (simultaneous isend/irecv), mixed (the ordering-domain repair work: async all_reduce + isend/irecv in flight together, same and opposite relative order), allreduce (float32 4 KiB/1 MiB/16 MiB, then float16
+    --steps S[,S...]     p2p_one (rank 0 -> rank 1), p2p_rev (rank 1 -> rank 0), p2p_both (simultaneous isend/irecv), mixed (async all_reduce + isend/irecv in flight together, same and opposite relative order), allreduce (float32 4 KiB/1 MiB/16 MiB, then float16
                          and bfloat16 1 MiB at world size 2), broadcast, all_gather. Collectives and P2P are never in flight together: each step waits for its Works.
 
 Sizes 4 KiB / 1 MiB / 16 MiB, a few repetitions, every received payload bit-compared; after every operation the local tensor must still be on this rank's device. No saturation loop.

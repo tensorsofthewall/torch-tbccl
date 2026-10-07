@@ -33,7 +33,7 @@ def wheel(tmp_path_factory):
 
 @needs_prefix
 def test_wheel_contents_metadata_and_runtime_paths(wheel):
-    p = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "package_inspect.py"), wheel], capture_output=True, text=True)
+    p = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "package_inspect.py"), wheel, "--allow-local-platform"], capture_output=True, text=True)
     assert p.returncode == 0, p.stdout + p.stderr
     rep = json.loads(p.stdout)
     assert "torch_tbccl/__init__.py" in rep["members"] and "torch_tbccl/info.py" in rep["members"]
@@ -41,6 +41,14 @@ def test_wheel_contents_metadata_and_runtime_paths(wheel):
     assert rep["problems"] == []
     assert rep["metal_frameworks"] == (sys.platform == "darwin" and torch.backends.mps.is_built())  # Metal only in the macOS MPS wheel
     assert not [n for n in rep["needed"] if "tbccl" in os.path.basename(n)]
+
+
+@needs_prefix
+def test_inspector_rejects_an_unpublishable_platform_tag(wheel):
+    if sys.platform == "darwin":
+        pytest.skip("a locally built macOS wheel already carries a macosx tag")
+    p = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "package_inspect.py"), wheel], capture_output=True, text=True)
+    assert p.returncode == 1 and "must be manylinux_*" in p.stdout
 
 
 @needs_prefix
@@ -52,7 +60,7 @@ def test_inspector_catches_a_missing_module(wheel, tmp_path):
         for item in zin.infolist():
             if item.filename != "torch_tbccl/_version.py":
                 zout.writestr(item, zin.read(item.filename))
-    p = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "package_inspect.py"), broken], capture_output=True, text=True)
+    p = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "package_inspect.py"), broken, "--allow-local-platform"], capture_output=True, text=True)
     assert p.returncode == 1 and "missing module torch_tbccl/_version.py" in p.stdout
 
 

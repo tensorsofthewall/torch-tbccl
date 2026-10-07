@@ -1,5 +1,5 @@
 """The MPS adapter work two-rank workload for accelerator <-> accelerator communication (CUDA <-> MPS physically; CPU <-> MPS locally). Exact-value checks first, a few timings second.
-Launch with torchrun on each host (static c10d rendezvous, one process per host), exactly like tools/p71_physical_ops.py; locally one `torchrun --standalone --nproc-per-node 2`
+Launch with torchrun on each host (static c10d rendezvous, one process per host), exactly like tools/physical_ops.py; locally one `torchrun --standalone --nproc-per-node 2`
 (add --local-addr 127.0.0.1 if the host name does not resolve).
 
     --devices D0,D1      the device of rank 0 and rank 1 (cpu | cuda | mps), e.g. cuda,mps (Linux rank 0 on CUDA, Mac rank 1 on MPS) or mps,cuda (reversed)

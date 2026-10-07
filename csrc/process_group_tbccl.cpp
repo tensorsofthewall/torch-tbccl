@@ -463,10 +463,7 @@ c10::intrusive_ptr<c10d::Work> ProcessGroupTBCCL::p2p(std::vector<at::Tensor> &t
     return c10::make_intrusive<WorkTBCCL>(getRank(), op, state);
 }
 
-// TBCCL's collectives and point-to-point transfers are independent ordering domains over ONE connection per peer: submitted back to back from one thread in the
-// same order on every rank, a collective and a P2P transfer that are in flight together can still interleave on that connection. tools/p71_mixed_inflight.py
-// shows it: the operations complete "successfully" with millions of wrong elements, or fail with a framing error. libtbccl has no guard, so the adapter refuses the
-// overlap instead of letting it corrupt data. Called under mutex_; finished operations are forgotten here, nothing is waited for.
+// Collectives need at least two ranks; a one-rank group rejects them. Called under mutex_.
 void ProcessGroupTBCCL::require_peers(const char *op) const
 {
     TORCH_CHECK_NOT_IMPLEMENTED(

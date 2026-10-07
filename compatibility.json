@@ -3,7 +3,7 @@
   "project": "torch-tbccl",
   "package": {
     "development_version": "0.2.0.dev0",
-    "release_target": "0.2.0",
+    "target_release": "0.2.0",
     "released": false
   },
   "python": {"requires": ">=3.13,<3.14"},

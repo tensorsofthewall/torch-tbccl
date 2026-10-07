@@ -51,4 +51,4 @@ prints the package, torch, libtbccl, C ABI and wire protocol versions and the de
 
 ## After upgrading TBCCL
 
-TBCCL's wire protocol must match across ranks and across everything linked against it. After installing a TBCCL with a different wire protocol version, rebuild torch-tbccl against the new prefix ([TBCCL versioning](https://github.com/tensorsofthewall/tbccl/blob/main/docs/reference/versioning.md)).
+TBCCL's wire protocol must match across ranks and across everything linked against it. After installing a TBCCL with a different wire protocol version, rebuild torch-tbccl against the new prefix ([TBCCL versioning](https://tbccl.tensorsofthewall.com/en/stable/reference/versioning.html)).

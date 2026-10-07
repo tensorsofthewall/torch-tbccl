@@ -1,6 +1,6 @@
 # Collectives and point-to-point on one group
 
-Collectives and point-to-point operations may be in flight on the same process group at the same time, in any relative order on each rank. libtbccl wire protocol 4 carries them on separate connections with separate workers ([TBCCL ordering domains](https://github.com/tensorsofthewall/tbccl/blob/main/docs/concepts/ordering-domains.md)).
+Collectives and point-to-point operations may be in flight on the same process group at the same time, in any relative order on each rank. libtbccl wire protocol 4 carries them on separate connections with separate workers ([TBCCL ordering domains](https://tbccl.tensorsofthewall.com/en/stable/concepts/ordering-domains.html)).
 
 The contracts still hold inside each domain:
 

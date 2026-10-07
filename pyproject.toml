@@ -22,6 +22,7 @@ requires-python = ">=3.13,<3.14"  # the tested tuple: CPython 3.13 (the compiled
 dependencies = ["torch>=2.13,<2.14"]
 
 [project.urls]
+Documentation = "https://torch-tbccl.tensorsofthewall.com/"
 Repository = "https://github.com/tensorsofthewall/torch-tbccl"
 Issues = "https://github.com/tensorsofthewall/torch-tbccl/issues"
 

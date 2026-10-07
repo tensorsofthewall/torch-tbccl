@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Technical guidance for contributors and coding agents working in this repository. User documentation is in `README.md`; design notes are in `docs/architecture.md` and `docs/pytorch_api_audit.md`. Contribution workflow is in `CONTRIBUTING.md`.
+Technical guidance for contributors and coding agents working in this repository. User documentation is in `README.md`; design notes are in `docs/concepts/architecture.md`. Contribution workflow is in `CONTRIBUTING.md`.
 
 ## Purpose
 

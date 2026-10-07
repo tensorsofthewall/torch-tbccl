@@ -1,3 +1,9 @@
 # Guides
 
-Task-oriented how-to guides.
+```{toctree}
+:maxdepth: 1
+
+ddp
+mps
+troubleshooting
+```

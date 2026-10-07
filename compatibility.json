@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "project": "torch-tbccl",
+  "package": {
+    "development_version": "0.2.0.dev0",
+    "target_release": "0.2.0",
+    "released": false
+  },
+  "python": {"requires": ">=3.13,<3.14"},
+  "frameworks": {
+    "torch": {"series": ["2.13"], "tested_version": "2.13.0"}
+  },
+  "requires_tbccl": {
+    "c_abi": [1],
+    "wire_protocol": [4]
+  },
+  "platforms": [
+    {"os": "linux", "arch": "x86_64", "devices": ["cpu", "cuda"], "cuda": "13"},
+    {"os": "macos", "arch": "arm64", "devices": ["cpu", "mps"]}
+  ],
+  "validated_configurations": [
+    {"name": "linux-cuda-cpu", "world_sizes": [1, 2, 3, 4]},
+    {"name": "macos-cpu-mps", "world_sizes": [1, 2]},
+    {"name": "linux-cuda-macos-mps-thunderbolt", "world_sizes": [2]}
+  ]
+}

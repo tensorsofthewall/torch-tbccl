@@ -3,7 +3,7 @@ over the Thunderbolt addresses, one process per host); everything is a handful o
 
     # host A (rank 0)                                       # host B (rank 1)
     TBCCL_LOCAL_ENDPOINT=<A tb ip>:0 torchrun --nnodes 2    TBCCL_LOCAL_ENDPOINT=<B tb ip>:0 torchrun --nnodes 2 --node-rank 1 ...
-        --nproc-per-node 1 --node-rank 0 --master-addr <A tb ip> --master-port P tools/p71_physical_ops.py --mode p2p
+        --nproc-per-node 1 --node-rank 0 --master-addr <A tb ip> --master-port P tools/physical_ops.py --mode p2p
 
 --mode p2p        blocking send/recv in both directions + simultaneous isend/irecv, sizes 4 KiB / 1 MiB / 16 MiB (float32), payloads bit-compared
 --mode allreduce  SUM all_reduce float32 (4 KiB / 1 MiB / 16 MiB), bfloat16 1 MiB, int64 4 KiB, exact integer values, async variant once

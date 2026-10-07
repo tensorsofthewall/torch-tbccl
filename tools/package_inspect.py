@@ -1,6 +1,6 @@
 """Inspect a built torch-tbccl wheel WITHOUT importing it: required members, metadata, the compiled extension's dynamic dependencies and runtime search path.
 
-    python tools/p71_package_inspect.py dist/torch_tbccl-*.whl [--json OUT]
+    python tools/package_inspect.py dist/torch_tbccl-*.whl [--json OUT]
 
 Fails (exit 1) on: a missing module / compiled extension / metadata, a wheel tag that does not match the running platform, an extension that references the build
 directory (absolute RUNPATH/RPATH entries outside system library directories, or an absolute install name), or metadata that does not pin the torch series.

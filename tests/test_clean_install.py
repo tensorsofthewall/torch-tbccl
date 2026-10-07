@@ -33,7 +33,7 @@ def wheel(tmp_path_factory):
 
 @needs_prefix
 def test_wheel_contents_metadata_and_runtime_paths(wheel):
-    p = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "p71_package_inspect.py"), wheel], capture_output=True, text=True)
+    p = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "package_inspect.py"), wheel], capture_output=True, text=True)
     assert p.returncode == 0, p.stdout + p.stderr
     rep = json.loads(p.stdout)
     assert "torch_tbccl/__init__.py" in rep["members"] and "torch_tbccl/info.py" in rep["members"]
@@ -52,7 +52,7 @@ def test_inspector_catches_a_missing_module(wheel, tmp_path):
         for item in zin.infolist():
             if item.filename != "torch_tbccl/_version.py":
                 zout.writestr(item, zin.read(item.filename))
-    p = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "p71_package_inspect.py"), broken], capture_output=True, text=True)
+    p = subprocess.run([sys.executable, os.path.join(ROOT, "tools", "package_inspect.py"), broken], capture_output=True, text=True)
     assert p.returncode == 1 and "missing module torch_tbccl/_version.py" in p.stdout
 
 
@@ -83,7 +83,7 @@ def test_clean_venv_install_and_real_w2_collective(wheel, tmp_path, device):
     assert inst.returncode == 0, inst.stderr[-2000:]
     work = tmp_path / "unrelated"
     work.mkdir()
-    shutil.copy(os.path.join(ROOT, "tools", "p71_clean_install_check.py"), work)
+    shutil.copy(os.path.join(ROOT, "tools", "clean_install_check.py"), work)
     env = {k: v for k, v in os.environ.items() if k not in ("PYTHONPATH", "VIRTUAL_ENV", "TBCCL_ROOT")}
-    p = subprocess.run([py, "p71_clean_install_check.py", "--device", device], cwd=work, env=env, capture_output=True, text=True, timeout=300)
+    p = subprocess.run([py, "clean_install_check.py", "--device", device], cwd=work, env=env, capture_output=True, text=True, timeout=300)
     assert p.returncode == 0, p.stdout[-3000:] + p.stderr[-3000:]

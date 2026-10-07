@@ -1,7 +1,7 @@
-"""The supported ProcessGroup surface is a tested contract. tools/p71_capability_matrix.py drives every operation x dtype x payload shape x root/destination
-through the public torch.distributed API on loopback (one launch per world size / device mode) and records what happened; tools/p71_capability_matrix.expected_status holds
+"""The supported ProcessGroup surface is a tested contract. tools/capability_matrix.py drives every operation x dtype x payload shape x root/destination
+through the public torch.distributed API on loopback (one launch per world size / device mode) and records what happened; tools/capability_matrix.expected_status holds
 the documented surface. Every observed cell must equal the documented one, so neither a regression nor a silently newly-working cell passes.
-The full matrix (W1-W4 x cpu/cuda0/cudaall, written to docs/data/phase71/capability_matrix.json) is regenerated with the tool itself."""
+The full matrix (W1-W4 x cpu/cuda0/cudaall, written to capability_matrix.json) is regenerated with the tool itself."""
 import importlib.util
 import os
 
@@ -11,8 +11,8 @@ import torch
 import torch_tbccl
 
 pytestmark = pytest.mark.multiprocess
-TOOL = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools", "p71_capability_matrix.py")
-spec = importlib.util.spec_from_file_location("p71_capability_matrix", TOOL)
+TOOL = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "tools", "capability_matrix.py")
+spec = importlib.util.spec_from_file_location("capability_matrix", TOOL)
 matrix = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(matrix)
 

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Technical guidance for contributors and coding agents working in this repository. User documentation is in `README.md`; design notes are in `docs/architecture.md` and `docs/pytorch_api_audit.md`. Contribution workflow is in `CONTRIBUTING.md`.
+Technical guidance for contributors and coding agents working in this repository. User documentation is in `README.md`; design notes are in `docs/concepts/architecture.md`. Contribution workflow is in `CONTRIBUTING.md`.
 
 ## Purpose
 
@@ -56,7 +56,7 @@ TBCCL_ROOT=<installed tbccl prefix> uv pip install --python .venv/bin/python --n
 
 ## Code ownership expectations
 
-Changes to `csrc/process_group_tbccl.*`, `csrc/bootstrap.cpp`, the MPS adapter and the supported-surface contract (`tools/p71_capability_matrix.py`, `tests/test_capability_matrix.py`) need maintainer review.
+Changes to `csrc/process_group_tbccl.*`, `csrc/bootstrap.cpp`, the MPS adapter and the supported-surface contract (`tools/capability_matrix.py`, `tests/test_capability_matrix.py`) need maintainer review.
 
 ## Conventions
 

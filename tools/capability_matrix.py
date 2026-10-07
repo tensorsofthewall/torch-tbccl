@@ -1,8 +1,8 @@
 """The packaging and capability-audit work capability matrix: operation x device x dtype x world-size, measured through the public torch.distributed API.
 
-    python tools/p71_capability_matrix.py run   --worlds 1,2,3,4 --devmodes cpu,cuda0,cudaall --out docs/data/phase71/capability_matrix.json
-    python tools/p71_capability_matrix.py render docs/data/phase71/capability_matrix.json >
-    python tools/p71_capability_matrix.py --worker ...     (internal: one rank)
+    python tools/capability_matrix.py run   --worlds 1,2,3,4 --devmodes cpu,cuda0,cudaall --out capability_matrix.json
+    python tools/capability_matrix.py render capability_matrix.json >
+    python tools/capability_matrix.py --worker ...     (internal: one rank)
 
 Every world size / device mode is one loopback launch of W processes (TBCCL_LOCAL_ENDPOINT=127.0.0.1:0, rendezvous through a TCPStore) that executes the
 whole case list in one process group. A case records what actually happened, never what is expected:
@@ -540,7 +540,7 @@ def cmd_render(a):
 
     phase = "Phase 72 MPS" if devmodes == ["mps0"] else "Phase 71"
     out = [f"# {phase} capability matrix (generated; do not edit)\n",
-           f"torch {doc['torch']}, torch-tbccl {doc['torch_tbccl']}, libtbccl {doc['runtime']}. Source: `tools/p71_capability_matrix.py`, raw data `{os.path.basename(a.file)}`.\n",
+           f"torch {doc['torch']}, torch-tbccl {doc['torch_tbccl']}, libtbccl {doc['runtime']}. Source: `tools/capability_matrix.py`, raw data `{os.path.basename(a.file)}`.\n",
            "Cell = result of the whole case (all 9 payload shapes, all root/destination variants). `pass (n)`: n dtype cases passed. Devmodes: cpu = all ranks CPU; "
            "cuda0 = rank 0 on CUDA, others CPU (heterogeneous); cudaall = every rank on the one GPU (shared, not multi-GPU); mps0 = rank 0 on MPS, others CPU. n/a for float64 and float8 on mps0: torch cannot create those tensors on MPS.\n"]
     byte_ops = ["send/recv", "isend/irecv", "broadcast", "all_gather", "gather"]

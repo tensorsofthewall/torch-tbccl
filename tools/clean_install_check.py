@@ -1,6 +1,6 @@
 """Clean-install check: run with the Python of a venv that has torch-tbccl installed from a WHEEL, from a directory unrelated to the source checkout.
 
-    cd <empty dir> && <venv>/bin/python p71_clean_install_check.py [--device cpu|cuda|mps] [--json OUT]
+    cd <empty dir> && <venv>/bin/python clean_install_check.py [--device cpu|cuda|mps] [--json OUT]
 
 Parent: verifies the package was imported from an installed location (not a source tree, no PYTHONPATH, no editable finder), prints its info, then launches two ranks of this
 same script on loopback (rendezvous through PyTorch's env:// TCPStore; TBCCL endpoints on host:0). Each rank selects the backend only through torch.distributed

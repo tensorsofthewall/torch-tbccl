@@ -61,6 +61,8 @@ See [compatibility](docs/reference/compatibility.md) and the draft [validation](
 
 The documentation is in `docs/` and builds with `make docs`: [getting started](docs/getting-started/index.md), [guides](docs/guides/index.md), [concepts](docs/concepts/index.md), [reference](docs/reference/index.md). Contributing: `CONTRIBUTING.md` and `AGENTS.md`.
 
+The hosted documentation is published with the first release; until then build it with `make docs`. Related projects and their documentation: `docs/related-projects.md`.
+
 ## License
 
 torch-tbccl is licensed under the Apache License, Version 2.0 (see `LICENSE`). Copyright 2026 Sandesh Bharadwaj.

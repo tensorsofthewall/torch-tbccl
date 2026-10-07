@@ -7,4 +7,5 @@ supported-operations
 configuration
 compatibility
 api
+licensing
 ```

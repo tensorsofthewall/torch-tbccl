@@ -1,4 +1,4 @@
-"""Phase 72 milestone probe: every supported c10d op on an MPS tensor must reach ProcessGroupTBCCL (not fail in the c10d dispatcher). One process per rank.
+"""The MPS adapter work milestone probe: every supported c10d op on an MPS tensor must reach ProcessGroupTBCCL (not fail in the c10d dispatcher). One process per rank.
 Prints one line per op with the exception text; with the MPS adapter in place the ops succeed."""
 import os
 import sys

@@ -1,4 +1,4 @@
-"""Phase 72: CPU <-> MPS ProcessGroup operations on one Mac (loopback). Scenarios: tests/_worker_mps.py. The MPS rank is either rank, so both orientations run."""
+"""CPU <-> MPS ProcessGroup operations on one Mac (loopback). Scenarios: tests/_worker_mps.py. The MPS rank is either rank, so both orientations run."""
 import pytest
 import torch
 

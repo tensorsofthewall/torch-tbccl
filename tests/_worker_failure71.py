@@ -1,4 +1,4 @@
-"""Phase 71 peer-failure, abort and teardown semantics, one scenario per TEST_MODE. Loopback only: the dying peer is a local process, never a physical host.
+"""The packaging and capability-audit work peer-failure, abort and teardown semantics, one scenario per TEST_MODE. Loopback only: the dying peer is a local process, never a physical host.
 
 Peer exits (rank 1 dies abruptly with os._exit(9); the survivors must fail within BOUND seconds with a structured torch-tbccl error, never hang):
   recv_peer_exit[_blocking]   rank 0 waits in irecv / a blocking recv

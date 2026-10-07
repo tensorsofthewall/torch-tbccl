@@ -126,7 +126,8 @@ def test_single_rank_group_needs_no_endpoint(monkeypatch):
 
 @pytest.mark.parametrize("world", [2, 3])
 def test_reinit_over_a_persistent_store_never_reads_stale_records(run_ranks, world):
-    # Regression (Phase 71): with torchrun the store outlives the process group; v2's fixed keys made cycle 2 read cycle 1's communicator id.
+    # Regression (the packaging and capability-audit work): with torchrun the store outlives the process group; v2's fixed keys made cycle 2
+    # read cycle 1's communicator id.
     for rank, (rc, out) in enumerate(run_ranks("_worker_reinit.py", world, extra_env={"CYCLES": "5"})):
         assert rc == 0, f"rank {rank}: {out}"
         assert out.strip().endswith(f"rank {rank} ok"), out

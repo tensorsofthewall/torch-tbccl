@@ -1,4 +1,4 @@
-"""Phase 72: PyTorch MPS tensors through ProcessGroupTBCCL, one scenario per TEST_MODE. Two ranks on loopback: rank MPS_RANK (default 1) holds MPS tensors,
+"""PyTorch MPS tensors through ProcessGroupTBCCL, one scenario per TEST_MODE. Two ranks on loopback: rank MPS_RANK (default 1) holds MPS tensors,
 the other rank holds CPU tensors (CPU<->MPS; MPS<->MPS on one GPU is not required). Every payload is bit-compared.
 
   p2p          blocking send/recv in both directions, then simultaneous isend/irecv, 4 KiB / 1 MiB / 16 MiB float32

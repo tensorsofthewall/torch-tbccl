@@ -95,7 +95,7 @@ def parent():
     print("INFO " + json.dumps(info), flush=True)
     if a.device == "cuda" and not torch.cuda.is_available():
         problems.append("cuda requested but unavailable")
-    if a.device == "mps":  # Phase 72: the MPS tensor is created through plain torch, and the installed wheel must advertise it
+    if a.device == "mps":  # The MPS tensor is created through plain torch, and the installed wheel must advertise it
         if not torch.backends.mps.is_available():
             problems.append("mps requested but unavailable")
         if "mps" not in torch_tbccl.supported_devices():

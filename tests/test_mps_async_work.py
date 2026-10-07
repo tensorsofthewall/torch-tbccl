@@ -1,4 +1,4 @@
-"""Phase 72: Work / Future / timeout / lifetime semantics with an MPS rank. The Phase 71 scenarios in tests/_worker_async.py run with rank 0 on MPS
+"""Work / Future / timeout / lifetime semantics with an MPS rank. The packaging and capability-audit work scenarios in tests/_worker_async.py run with rank 0 on MPS
 (DEVICE_RANK0=mps); outstanding-Work counts, failure, abort and shutdown with MPS are the `mps` parameters of tests/test_async_work.py,
 tests/test_failure_lifecycle.py and tests/test_lifecycle.py."""
 import pytest

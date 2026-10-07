@@ -1,5 +1,5 @@
-"""Phase 73: collectives and point-to-point operations in flight TOGETHER on one process group, in the same and in OPPOSITE relative order on the ranks (libtbccl 0.5.1 wire 4
-treats them as independent ordering domains; this replaces the Phase 71 overlap guard test). Every payload is exact. Rank 0 may hold CUDA or MPS tensors (DEVICE_RANK0).
+"""Collectives and point-to-point operations in flight TOGETHER on one process group, in the same and in OPPOSITE relative order on the ranks (libtbccl 0.5.1 wire 4
+treats them as independent ordering domains; this replaces the packaging and capability-audit overlap guard test). Every payload is exact. Rank 0 may hold CUDA or MPS tensors (DEVICE_RANK0).
 
   W2: all_reduce / broadcast / all_gather / barrier each overlapped with an isend + irecv pair, 4 KiB / 1 MiB / 64 MiB, relative order same, opposite, mirrored
   W3: a P2P ring (isend next, irecv previous) overlapped with an all_reduce, order alternating by rank parity

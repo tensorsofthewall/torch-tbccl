@@ -1,6 +1,6 @@
 """One rank of a tiny two-host N-rank (3 or 4) probe of TBCCL's optimized collective algorithms: a CORRECTNESS check, not a benchmark.
 
-Phase 51: run it once per forced algorithm combination (the SAME TBCCL_*_ALGORITHM variables on every rank; differing overrides are a protocol mismatch),
+Run it once per forced algorithm combination (the SAME TBCCL_*_ALGORITHM variables on every rank; differing overrides are a protocol mismatch),
 e.g. TBCCL_ALLREDUCE_ALGORITHM=ring. Payloads are at most 1 MiB and about a dozen operations per rank, because sustained TB4 traffic has raised the root port's
 correctable Replay Timer Timeout counter before. Every check is exact (integer-valued Float32 sums). Launch one process per rank, like examples/nrank_link.py.
 """

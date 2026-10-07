@@ -18,7 +18,7 @@ def test_registration_idempotent():
     assert dist.Backend.backend_list.count("tbccl") == 1
 
 
-# Phase 71: backend selection through the normal torch.distributed API, never a silent substitute.
+# Backend selection through the normal torch.distributed API, never a silent substitute.
 import subprocess
 import sys
 

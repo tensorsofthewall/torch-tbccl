@@ -1,7 +1,7 @@
 // Out-of-tree c10d dispatcher kernels for the MPS dispatch key.
 //
 // PyTorch 2.13 registers the c10d operators for CPU, CUDA and PrivateUse1 only (Ops.cpp), so a collective on an MPS tensor fails in the dispatcher before any
-// Backend is consulted (docs/phase72_c10d_mps_dispatch.md). Each kernel here mirrors what the CPU/CUDA kernel does for the operators the tbccl backend supports:
+// Backend is consulted. Each kernel here mirrors what the CPU/CUDA kernel does for the operators the tbccl backend supports:
 // unwrap the ProcessGroup, getBackend(DeviceType::MPS), call the Backend method, wrap the Work. Registration is explicit (not a static initializer) so it can be
 // gated: it is done only on the torch series the schemas were verified against, refuses an operator whose schema differs from the expected text, and skips one
 // that already has an MPS kernel (a future PyTorch that supports MPS natively).

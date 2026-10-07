@@ -1,9 +1,9 @@
-"""Phase 72 two-rank workload for accelerator <-> accelerator communication (CUDA <-> MPS physically; CPU <-> MPS locally). Exact-value checks first, a few timings second.
+"""The MPS adapter work two-rank workload for accelerator <-> accelerator communication (CUDA <-> MPS physically; CPU <-> MPS locally). Exact-value checks first, a few timings second.
 Launch with torchrun on each host (static c10d rendezvous, one process per host), exactly like tools/p71_physical_ops.py; locally one `torchrun --standalone --nproc-per-node 2`
 (add --local-addr 127.0.0.1 if the host name does not resolve).
 
     --devices D0,D1      the device of rank 0 and rank 1 (cpu | cuda | mps), e.g. cuda,mps (Linux rank 0 on CUDA, Mac rank 1 on MPS) or mps,cuda (reversed)
-    --steps S[,S...]     p2p_one (rank 0 -> rank 1), p2p_rev (rank 1 -> rank 0), p2p_both (simultaneous isend/irecv), mixed (Phase 73: async all_reduce + isend/irecv in flight together, same and opposite relative order), allreduce (float32 4 KiB/1 MiB/16 MiB, then float16
+    --steps S[,S...]     p2p_one (rank 0 -> rank 1), p2p_rev (rank 1 -> rank 0), p2p_both (simultaneous isend/irecv), mixed (the ordering-domain repair work: async all_reduce + isend/irecv in flight together, same and opposite relative order), allreduce (float32 4 KiB/1 MiB/16 MiB, then float16
                          and bfloat16 1 MiB at world size 2), broadcast, all_gather. Collectives and P2P are never in flight together: each step waits for its Works.
 
 Sizes 4 KiB / 1 MiB / 16 MiB, a few repetitions, every received payload bit-compared; after every operation the local tensor must still be on this rank's device. No saturation loop.
@@ -107,7 +107,7 @@ def allreduce():
 
 
 def mixed():
-    """Phase 73: an async fp32 all_reduce and a simultaneous isend/irecv pair in flight together on one group, 4 KiB and 1 MiB, with the SAME relative order on both ranks and
+    """An async fp32 all_reduce and a simultaneous isend/irecv pair in flight together on one group, 4 KiB and 1 MiB, with the SAME relative order on both ranks and
     with the two OPPOSITE orders (rank 0 collective first / rank 1 P2P first, then the mirror). Collectives and P2P are independent ordering domains in libtbccl wire 4."""
     res = {}
     for label, n in (("4KiB", 1 << 10), ("1MiB", 1 << 18)):

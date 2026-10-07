@@ -1,4 +1,4 @@
-"""Phase 71: repeated group lifecycle with resource accounting, interpreter shutdown, endpoint reuse (tests/_worker_lifecycle.py, tests/_worker_shutdown.py)."""
+"""Repeated group lifecycle with resource accounting, interpreter shutdown, endpoint reuse (tests/_worker_lifecycle.py, tests/_worker_shutdown.py)."""
 import os
 import subprocess
 import sys

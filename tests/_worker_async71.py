@@ -1,4 +1,4 @@
-"""Phase 71 asynchronous Work semantics, one scenario per TEST_MODE (2 ranks, optionally CUDA on rank 0 via DEVICE_RANK0=cuda).
+"""The packaging and capability-audit work asynchronous Work semantics, one scenario per TEST_MODE (2 ranks, optionally CUDA on rank 0 via DEVICE_RANK0=cuda).
 
   p2p_outstanding N        N isend/irecv in flight in both directions at once, waited in reverse order, every payload checked (FIFO association)
   allreduce_outstanding N  N small async all_reduces in flight, waited in a scrambled order, every result checked

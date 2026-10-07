@@ -15,7 +15,7 @@ mode = os.environ["TEST_MODE"]
 dist.init_process_group("tbccl", timeout=timedelta(seconds=60))
 rank = dist.get_rank()
 LATE = 1.0  # seconds rank 1 waits before joining
-dev = torch.device(os.environ["DEVICE_RANK0"] if os.environ.get("DEVICE_RANK0") in ("cuda", "mps") and rank == 0 else "cpu")  # Phase 72: rank 0 may hold MPS tensors
+dev = torch.device(os.environ["DEVICE_RANK0"] if os.environ.get("DEVICE_RANK0") in ("cuda", "mps") and rank == 0 else "cpu")  # Rank 0 may hold MPS tensors
 
 
 def vals(r, n, k=0):

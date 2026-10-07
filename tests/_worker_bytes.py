@@ -1,4 +1,4 @@
-"""One rank of an opaque-byte transport scenario (Phase 49): FP8 payloads, arbitrary random bytes and a packed-INT4 quantized bundle must cross
+"""One rank of an opaque-byte transport scenario (the low-precision datatype work): FP8 payloads, arbitrary random bytes and a packed-INT4 quantized bundle must cross
 send/recv, broadcast and all_gather bit-exactly, with no dtype ever interpreted. Comparison is always on the underlying bytes (view(torch.uint8)),
 never on floating-point values (FP8 NaN encodings and negative zero must survive too).
 
@@ -163,7 +163,7 @@ elif mode == "reduction_rejected":
 
     for name, dtype in BYTE_DTYPES:
         if name in ("int8", "uint8", "bfloat16", "float16"):
-            continue  # these four are reducible since Phase 49
+            continue  # these four are reducible since low-precision datatype
         t0 = time.monotonic()
         try:
             dist.all_reduce(make(dtype, 64, 5).to(dev))

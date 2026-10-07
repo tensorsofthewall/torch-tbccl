@@ -4,7 +4,7 @@
 
 Fails (exit 1) on: a missing module / compiled extension / metadata, a wheel tag that does not match the running platform, an extension that references the build
 directory (absolute RUNPATH/RPATH entries outside system library directories, or an absolute install name), or metadata that does not pin the torch series.
-Phase 72: it also fails on a run-time dependency on libtbccl, on Apple frameworks in a non-macOS wheel, and reports whether the macOS wheel links Metal (the MPS adapter).
+It also fails on a run-time dependency on libtbccl, on Apple frameworks in a non-macOS wheel, and reports whether the macOS wheel links Metal (the MPS adapter).
 What the wheel needs at run time is printed: the shared libraries the extension asks the loader for, and where it may look for them.
 """
 import argparse

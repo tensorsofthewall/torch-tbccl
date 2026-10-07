@@ -1,6 +1,6 @@
-"""Phase 71: the supported ProcessGroup surface is a tested contract. tools/p71_capability_matrix.py drives every operation x dtype x payload shape x root/destination
+"""The supported ProcessGroup surface is a tested contract. tools/p71_capability_matrix.py drives every operation x dtype x payload shape x root/destination
 through the public torch.distributed API on loopback (one launch per world size / device mode) and records what happened; tools/p71_capability_matrix.expected_status holds
-the documented surface (docs/phase71_capability_audit.md). Every observed cell must equal the documented one, so neither a regression nor a silently newly-working cell passes.
+the documented surface. Every observed cell must equal the documented one, so neither a regression nor a silently newly-working cell passes.
 The full matrix (W1-W4 x cpu/cuda0/cudaall, written to docs/data/phase71/capability_matrix.json) is regenerated with the tool itself."""
 import importlib.util
 import os
@@ -23,7 +23,7 @@ needs_mps = pytest.mark.skipif(not HAS_MPS, reason="needs MPS")
 CONFIGS = [
     ("cpu", 1), ("cpu", 2), ("cpu", 3), ("cpu", 4),
     pytest.param("cuda0", 2, marks=needs_cuda), pytest.param("cuda0", 3, marks=needs_cuda), pytest.param("cudaall", 2, marks=needs_cuda),
-    pytest.param("mps0", 1, marks=needs_mps), pytest.param("mps0", 2, marks=needs_mps),  # Phase 72: rank 0 on MPS, the others on CPU
+    pytest.param("mps0", 1, marks=needs_mps), pytest.param("mps0", 2, marks=needs_mps),  # Rank 0 on MPS, the others on CPU
 ]
 
 

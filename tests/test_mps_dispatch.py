@@ -1,4 +1,4 @@
-"""Phase 72: the c10d MPS dispatch (docs/phase72_c10d_mps_dispatch.md): the operators exist for the MPS key after `import torch_tbccl`, the shim is version gated,
+"""The c10d MPS dispatch: the operators exist for the MPS key after `import torch_tbccl`, the shim is version gated,
 and an MPS tensor reaches ProcessGroupTBCCL instead of failing in the dispatcher."""
 import subprocess
 import sys

@@ -1,7 +1,7 @@
 #pragma once
 
 // PyTorch MPS tensor -> CPU-visible pointer into its (shared-storage) MTLBuffer, plus the device-wide synchronization used before TBCCL
-// reads or writes it. Compiled only on macOS (TORCH_TBCCL_WITH_MPS); see docs/phase72_mps_architecture.md.
+// reads or writes it. Compiled only on macOS (TORCH_TBCCL_WITH_MPS)
 
 #include <ATen/ATen.h>
 

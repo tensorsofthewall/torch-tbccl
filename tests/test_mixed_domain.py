@@ -1,4 +1,4 @@
-"""Phase 73: P2P and collectives overlap safely on one process group (libtbccl wire 4 separates the two ordering domains). Replaces the Phase 71 overlap guard tests.
+"""P2P and collectives overlap safely on one process group (libtbccl wire 4 separates the two ordering domains). Replaces the packaging and capability-audit overlap guard tests.
 Scenarios: tests/_worker_mixed.py."""
 import pytest
 import torch

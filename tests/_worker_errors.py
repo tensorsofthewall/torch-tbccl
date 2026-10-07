@@ -24,7 +24,8 @@ def expect(exc, match, fn):
 
 
 f = lambda: torch.ones(8)  # noqa: E731
-# float16/bfloat16/int8/uint8 are reducible since Phase 49; dtypes with no reduction arithmetic still fail promptly and name the supported set.
+# float16/bfloat16/int8/uint8 are reducible since low-precision datatype; dtypes with no reduction arithmetic still fail promptly and name the
+# supported set.
 expect(NotImplementedError, "has no reduction", lambda: dist.all_reduce(torch.ones(8, dtype=torch.int16)))
 expect(NotImplementedError, "has no reduction", lambda: dist.all_reduce(torch.ones(8, dtype=torch.bool)))
 if hasattr(torch, "float8_e4m3fn"):

@@ -22,7 +22,7 @@ def test_peer_death_propagates_failure_and_shuts_down_cleanly(run_two_ranks):
     assert out0.strip().splitlines()[-1] == "rank 0 ok"
 
 
-# Phase 71: outstanding-Work counts, async variants of every asynchronous-capable operation, and resource growth (tests/_worker_async71.py).
+# outstanding-Work counts, async variants of every asynchronous-capable operation, and resource growth (tests/_worker_async71.py).
 import torch  # noqa: E402
 
 import torch_tbccl  # noqa: E402

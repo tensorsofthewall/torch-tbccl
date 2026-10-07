@@ -17,7 +17,7 @@ def test_abort_scenarios(run_two_ranks, mode):
     run(run_two_ranks, mode)
 
 
-# Phase 49: the same silent-peer abort semantics for the new reduction dtypes (the Work and Future go terminal, the buffer is not touched after abort, teardown is bounded).
+# The same silent-peer abort semantics for the new reduction dtypes (the Work and Future go terminal, the buffer is not touched after abort, teardown is bounded).
 @pytest.mark.parametrize("dtype", ["float16", "bfloat16", "int8", "uint8"])
 @pytest.mark.parametrize("mode", ["abort", "destroy", "lifetime", "timeout_then_abort"])
 def test_abort_scenarios_low_precision(run_two_ranks, mode, dtype):

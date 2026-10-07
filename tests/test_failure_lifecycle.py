@@ -1,4 +1,4 @@
-"""Phase 71: peer failure, abort and teardown semantics (loopback; the dying peer is always a local process). Scenarios: tests/_worker_failure71.py."""
+"""Peer failure, abort and teardown semantics (loopback; the dying peer is always a local process). Scenarios: tests/_worker_failure71.py."""
 import os
 
 import pytest

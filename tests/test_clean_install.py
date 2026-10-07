@@ -1,5 +1,5 @@
-"""Phase 71: packaging discipline. A wheel is built from the source tree, inspected without importing it, installed into a brand-new venv, and exercised from an unrelated
-directory with no PYTHONPATH. Editable installs hide packaging bugs (Phase 69 found one in vllm-tbccl); this cannot.
+"""Packaging discipline. A wheel is built from the source tree, inspected without importing it, installed into a brand-new venv, and exercised from an unrelated
+directory with no PYTHONPATH. Editable installs hide packaging bugs (the vLLM 0.31 alignment work found one in vllm-tbccl); this cannot.
 
 Needs TBCCL_ROOT (an installed TBCCL prefix) and the `build` module; the clean-venv part also needs `uv` and the package index/cache for torch (set P71_CLEAN_INSTALL=1).
 """
@@ -39,7 +39,7 @@ def test_wheel_contents_metadata_and_runtime_paths(wheel):
     assert "torch_tbccl/__init__.py" in rep["members"] and "torch_tbccl/info.py" in rep["members"]
     assert any(m.startswith("torch_tbccl/_C.") for m in rep["members"])
     assert rep["problems"] == []
-    assert rep["metal_frameworks"] == (sys.platform == "darwin" and torch.backends.mps.is_built())  # Phase 72: Metal only in the macOS MPS wheel
+    assert rep["metal_frameworks"] == (sys.platform == "darwin" and torch.backends.mps.is_built())  # Metal only in the macOS MPS wheel
     assert not [n for n in rep["needed"] if "tbccl" in os.path.basename(n)]
 
 

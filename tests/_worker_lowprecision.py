@@ -1,4 +1,4 @@
-"""One rank of a low-precision reduction scenario (Phase 49): float16 / bfloat16 / int8 / uint8 SUM all_reduce through torch.distributed.
+"""One rank of a low-precision reduction scenario (the low-precision datatype work): float16 / bfloat16 / int8 / uint8 SUM all_reduce through torch.distributed.
 
 CUDA_RANKS (default none) lists the ranks whose tensors live on the GPU; the others use CPU. Expected results are computed with torch on CPU from
 both ranks' (regenerated) contributions: 16-bit floats = widen to float32, add, round once (the TBCCL semantics); integers wrap modulo 2^N.

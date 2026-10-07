@@ -1,6 +1,6 @@
 """One rank of an N-rank (3 or 4) torch-tbccl group spanning two hosts: a SMALL correctness probe, not a benchmark.
 
-Phase 50 limits real-link traffic to a few tiny exchanges (payloads <= 64 KiB, a handful of operations) because sustained TB4 traffic has raised the
+The N-rank runtime work limits real-link traffic to a few tiny exchanges (payloads <= 64 KiB, a handful of operations) because sustained TB4 traffic has raised the
 root port's correctable Replay Timer Timeout counter. Every check is exact (integer-valued Float32 sums). Launch one process per rank:
 
   RANK=<r> WORLD_SIZE=<n> MASTER_ADDR=<rank-0 host> MASTER_PORT=<p> TBCCL_LOCAL_ENDPOINT=<this host's TB4 ip>:0 python examples/nrank_link.py

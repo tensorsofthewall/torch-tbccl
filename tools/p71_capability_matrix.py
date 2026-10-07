@@ -1,7 +1,7 @@
-"""Phase 71 capability matrix: operation x device x dtype x world-size, measured through the public torch.distributed API.
+"""The packaging and capability-audit work capability matrix: operation x device x dtype x world-size, measured through the public torch.distributed API.
 
     python tools/p71_capability_matrix.py run   --worlds 1,2,3,4 --devmodes cpu,cuda0,cudaall --out docs/data/phase71/capability_matrix.json
-    python tools/p71_capability_matrix.py render docs/data/phase71/capability_matrix.json > docs/phase71_capability_matrix.md
+    python tools/p71_capability_matrix.py render docs/data/phase71/capability_matrix.json >
     python tools/p71_capability_matrix.py --worker ...     (internal: one rank)
 
 Every world size / device mode is one loopback launch of W processes (TBCCL_LOCAL_ENDPOINT=127.0.0.1:0, rendezvous through a TCPStore) that executes the
@@ -19,7 +19,7 @@ Payloads are deterministic small integers (exact in every dtype, including bf16 
 bytes; reductions compare against a float64/int64 reference reduced on the CPU.
 
 devmodes: cpu (all ranks CPU), cuda0 (rank 0 on cuda:0, the others on CPU; heterogeneous), cudaall (every rank on cuda:0 - ONE physical GPU is shared, which
-validates the ProcessGroup path but is not multi-GPU), mps0 (Phase 72, macOS: rank 0 on an MPS tensor, the others on CPU; world sizes 1 and 2 only; dtypes MPS cannot create
+validates the ProcessGroup path but is not multi-GPU), mps0 (the MPS adapter work, macOS: rank 0 on an MPS tensor, the others on CPU; world sizes 1 and 2 only; dtypes MPS cannot create
 are recorded as NA with the reason).
 """
 import argparse
@@ -44,7 +44,7 @@ MPS_UNCREATABLE = ("float64", "float8_e4m3fn")  # torch refuses to create these 
 
 
 def expected_status(op, dtype, world, devmode="cpu"):
-    """The supported surface as DOCUMENTED (docs/phase71_capability_audit.md); the matrix must observe exactly this, so any drift - a newly working or a newly broken
+    """The supported surface as DOCUMENTED; the matrix must observe exactly this, so any drift - a newly working or a newly broken
     cell - fails the check instead of passing silently. Same for every device mode, except that mps0 cannot create some dtypes."""
     if devmode == "mps0" and dtype in MPS_UNCREATABLE:
         return "NA"
@@ -394,7 +394,7 @@ def worker(a):
             low = msg.lower()
             intentional = ("torch-tbccl: unsupported operation" in msg or "torch-tbccl: invalid argument" in msg or "does not support" in low
                            or "not implemented" in low or "not supported" in low
-                           or "is not currently implemented for the mps device" in low)  # Phase 72: unsupported c10d ops on MPS fail in PyTorch's dispatcher
+                           or "is not currently implemented for the mps device" in low)  # Unsupported c10d ops on MPS fail in PyTorch's dispatcher
             rec.update(status="REJECTED" if intentional else "ERROR", detail=f"{type(e).__name__}: {msg[:400]}")
         rec["ms"] = round((time.monotonic() - t0) * 1e3, 1)
         print("CASE " + json.dumps(rec), flush=True)

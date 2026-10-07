@@ -1,4 +1,4 @@
-"""Phase 72: real DistributedDataParallel with an MPS rank next to a CPU rank on one Mac (examples/ddp_mlp.py, checked against the single-process reference).
+"""Real DistributedDataParallel with an MPS rank next to a CPU rank on one Mac (examples/ddp_mlp.py, checked against the single-process reference).
 Both ranks must stay within the script's tolerances; the optimizer step runs on each rank's own device, so CPU and MPS parameters may differ by an ulp (reported as
 cross_rank_max_abs_diff)."""
 import pytest

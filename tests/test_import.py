@@ -14,7 +14,7 @@ def test_versions_are_distinct_strings():
 def test_compiled_features():
     f = torch_tbccl.compiled_features()
     assert f["cpu"] is True
-    assert f["mps"] is (sys.platform == "darwin" and torch.backends.mps.is_built())  # Phase 72: MPS only in the macOS build, never on Linux
+    assert f["mps"] is (sys.platform == "darwin" and torch.backends.mps.is_built())  # MPS only in the macOS build, never on Linux
     assert isinstance(f["cuda"], bool)
     assert not (f["cuda"] and f["mps"])
     assert torch_tbccl.supported_devices() == [d for d in ("cpu", "cuda", "mps") if f[d]]

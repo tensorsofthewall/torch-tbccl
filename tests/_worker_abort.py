@@ -17,7 +17,7 @@ dist.init_process_group("tbccl", timeout=timedelta(seconds=60))
 rank = dist.get_rank()
 store = dist.distributed_c10d._get_default_store()
 dev = torch.device(os.environ.get("ABORT_DEVICE", "cpu"))
-dtype = getattr(torch, os.environ.get("ABORT_DTYPE", "float32"))  # Phase 49: also float16 / bfloat16 / int8 / uint8 reductions
+dtype = getattr(torch, os.environ.get("ABORT_DTYPE", "float32"))  # Also float16 / bfloat16 / int8 / uint8 reductions
 x = torch.ones(1024, dtype=dtype, device=dev)
 dist.all_reduce(x)  # healthy control
 assert x[0].item() == 2.0

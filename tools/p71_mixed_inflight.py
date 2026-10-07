@@ -1,4 +1,4 @@
-"""NOTE (Phase 73): this is the Phase 71 reproducer of the old behaviour. With libtbccl wire 4 the overlap modes now succeed (see tests/test_mixed_domain.py); the pre-repair
+"""NOTE (the ordering-domain repair work): this is the packaging and capability-audit reproducer of the old behaviour. With libtbccl wire 4 the overlap modes now succeed (see tests/test_mixed_domain.py); the pre-repair
 behaviour is recorded in docs/data/phase71/mixed_inflight_before_guard.txt.
 
 Characterization (not a test of a supported feature): a collective and a point-to-point operation IN FLIGHT AT THE SAME TIME on one group.

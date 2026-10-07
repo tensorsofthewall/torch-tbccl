@@ -1,4 +1,4 @@
-"""Phase 71: real DistributedDataParallel over the "tbccl" backend (examples/ddp_mlp.py), each run checked by the script against a single-process,
+"""Real DistributedDataParallel over the "tbccl" backend (examples/ddp_mlp.py), each run checked by the script against a single-process,
 non-distributed reference trained on the same global batch (per-step loss, gradient norm, final parameters, identical parameters on every rank).
 Runs go through the run_ranks fixture (env:// rendezvous) and, for the launcher tests, through `torchrun`."""
 import json
@@ -101,7 +101,7 @@ def test_torchrun_launch(nproc, cycles):
 
 @pytest.mark.parametrize("world", [2, 3])
 def test_ddp_with_concurrent_application_p2p_on_the_same_group(run_ranks, world):
-    # Phase 73: an application thread exchanges deterministic messages (isend/irecv) while DDP's backward runs its gradient all_reduces on the same ProcessGroupTBCCL.
+    # An application thread exchanges deterministic messages (isend/irecv) while DDP's backward runs its gradient all_reduces on the same ProcessGroupTBCCL.
     res = run_ddp(run_ranks, world, "--steps", "10", "--side-p2p", "60")
     assert all(r["side_p2p_ok"] and r["side_p2p_messages"] == 60 for r in res), res
 

@@ -61,7 +61,7 @@ See [compatibility](docs/reference/compatibility.md) and the draft [validation](
 
 The documentation is in `docs/` and builds with `make docs`: [getting started](docs/getting-started/index.md), [guides](docs/guides/index.md), [concepts](docs/concepts/index.md), [reference](docs/reference/index.md). Contributing: `CONTRIBUTING.md` and `AGENTS.md`.
 
-The hosted documentation is published with the first release; until then build it with `make docs`. Related projects and their documentation: `docs/related-projects.md`.
+The hosted documentation is at https://torch-tbccl.tensorsofthewall.com/ (development documentation built from `main` until the first release); you can also build it with `make docs`. Related projects and their documentation: `docs/related-projects.md`.
 
 ## License
 

@@ -34,20 +34,20 @@ def run_two_ranks():
     """Run a worker script as two processes on loopback; return their (rc, output)."""
 
     def run(script, timeout=60, extra_env=None, args=()):
-        master, p0, p1 = free_ports(3)
+        # Endpoint ports are chosen by the kernel (host:0): a port probed free here can be taken as an ephemeral source port by the time a rank binds it. The fixed
+        # host:port convention (data port = port + 1000) is covered in-process by tests/test_bootstrap.py.
+        master = free_ports(1)[0]
         procs = []
-        for rank, port in enumerate((p0, p1)):
+        for rank in range(2):
             env = dict(
                 os.environ,
                 MASTER_ADDR="127.0.0.1",
                 MASTER_PORT=str(master),
                 RANK=str(rank),
                 WORLD_SIZE="2",
-                TBCCL_LOCAL_ENDPOINT=f"127.0.0.1:{port}",
+                TBCCL_LOCAL_ENDPOINT="127.0.0.1:0",
             )
             env.update(extra_env or {})
-            if env.get("AUTO_PORT"):
-                env["TBCCL_LOCAL_ENDPOINT"] = "127.0.0.1:0"
             procs.append(
                 subprocess.Popen(
                     [sys.executable, os.path.join(HERE, script), *args],

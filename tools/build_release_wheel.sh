@@ -10,6 +10,7 @@ OUT=${1:?output directory}
 : "${TBCCL_ROOT:?set TBCCL_ROOT to an installed TBCCL prefix}"
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 mkdir -p "$OUT"
+export SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH:-$(git -C "$HERE" log -1 --format=%ct)}  # whole-file reproducible wheels: zip entries carry the commit time
 RAW=$(mktemp -d "${TMPDIR:-/tmp}/torch-tbccl-wheel.XXXXXX")
 trap 'rm -rf "$RAW"' EXIT
 if [ "$(uname -s)" = Darwin ]; then

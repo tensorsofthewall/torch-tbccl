@@ -8,7 +8,7 @@ First release candidate of the first planned release, 0.2.0. Expect an rc2 if a 
 
 ### Installation
 
-- CI-built wheels (Linux x86-64 manylinux_2_28 for the CUDA-13 PyTorch; macOS arm64 14.0+) attached to the GitHub pre-release and uploaded to TestPyPI, with an SPDX SBOM, `SHA256SUMS` and a build-provenance attestation. The wheel links TBCCL 0.6.0rc1 statically; no TBCCL install is needed. Requires CPython 3.13 and `torch>=2.13,<2.14`.
+- CI-built wheels (Linux x86-64 manylinux_2_28 for the CUDA-13 PyTorch; macOS arm64 14.0+) attached to the GitHub pre-release (not published on PyPI or TestPyPI), with an SPDX SBOM, `SHA256SUMS` and a build-provenance attestation. The wheel links TBCCL 0.6.0rc1 statically; no TBCCL install is needed. Requires CPython 3.13 and `torch>=2.13,<2.14`.
 
 ### Added
 

@@ -1,10 +1,14 @@
 # Changelog
 
-All notable user-facing changes are recorded here. The format follows Keep a Changelog, and the project follows Semantic Versioning once it has releases. torch-tbccl has not been released: everything below is unreleased.
+All notable user-facing changes are recorded here. The format follows Keep a Changelog, and the project follows Semantic Versioning once it has releases. torch-tbccl has had no final release. 0.2.0rc1 is a release candidate (pre-release), not production-ready.
 
-## Unreleased
+## 0.2.0rc1 (release candidate)
 
-Planned for 0.2.0. This section describes the first planned release and changes until it is published.
+First release candidate of the first planned release, 0.2.0. Expect an rc2 if a blocker is found.
+
+### Installation
+
+- CI-built wheels (Linux x86-64 manylinux_2_28 for the CUDA-13 PyTorch; macOS arm64 14.0+) attached to the GitHub pre-release and uploaded to TestPyPI, with an SPDX SBOM, `SHA256SUMS` and a build-provenance attestation. The wheel links TBCCL 0.6.0rc1 statically; no TBCCL install is needed. Requires CPython 3.13 and `torch>=2.13,<2.14`.
 
 ### Added
 

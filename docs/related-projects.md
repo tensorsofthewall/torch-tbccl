@@ -5,7 +5,7 @@ torch-tbccl is an adapter over TBCCL. The projects below are the runtime it need
 | Project | Role | Documentation | Source | Planned release |
 |---|---|---|---|---|
 | tbccl | The runtime: C++ library, stable C ABI, TCP transport and collectives. | [tbccl.tensorsofthewall.com](https://tbccl.tensorsofthewall.com/) | [source](https://github.com/tensorsofthewall/tbccl) | 0.6.0 (unreleased) |
-| vllm-tbccl | A vLLM platform plugin that routes communication through torch-tbccl. | [vllm-tbccl.tensorsofthewall.com](https://vllm-tbccl.tensorsofthewall.com/) | [source](https://github.com/tensorsofthewall/vllm-tbccl) | 0.2.0 (unreleased) |
+| vllm-tbccl | A vLLM platform plugin with its own bundled TBCCL backend; it does not depend on torch-tbccl. | [vllm-tbccl.tensorsofthewall.com](https://vllm-tbccl.tensorsofthewall.com/) | [source](https://github.com/tensorsofthewall/vllm-tbccl) | 0.2.0 (unreleased) |
 | exo-tbccl | A pipeline-parallel data plane for exo over the TBCCL C ABI. | [exo-tbccl.tensorsofthewall.com](https://exo-tbccl.tensorsofthewall.com/) | [source](https://github.com/tensorsofthewall/exo-tbccl) | 0.3.0 (unreleased) |
 
 Each project's documentation is hosted on its own site and the version shown there is built from `main` (development documentation) until that project has a release; a release documentation version exists only after the first release is tagged. Every project's documentation can also be built from its repository with `make docs` (see {doc}`development/building-docs`). The planned releases are unreleased targets, recorded in each project's `compatibility.json`.

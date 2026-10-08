@@ -6,13 +6,17 @@ torch-tbccl is built from source against an **installed** [TBCCL](https://github
 
 | | |
 |---|---|
-| torch-tbccl | 0.2.0.dev0 (development) |
+| torch-tbccl | 0.2.0rc1 (release candidate) |
 | PyTorch | 2.13.x (validated with 2.13.0) |
 | CPython | 3.13 |
 | TBCCL | C ABI 1, wire protocol 4 |
 | Platforms | Linux x86-64 (CPU and CUDA 13) and macOS arm64 (CPU and MPS) |
 
 Anything else is untested. See [Compatibility](../reference/compatibility.md).
+
+```{note}
+**Release candidate (pre-release) instructions.** 0.2.0rc1 wheels are attached to the GitHub pre-release `v0.2.0rc1` and published to TestPyPI. They are for validation, not production use. Install PyTorch from the CUDA 13 build (Linux) or PyPI (macOS) first, then either `pip install --pre --no-deps -i https://test.pypi.org/simple/ torch-tbccl==0.2.0rc1` or `pip install torch_tbccl-0.2.0rc1-*.whl` from the release page. The wheel contains the TBCCL runtime; building from source against a prefix (below) remains supported. The final install commands will replace this note.
+```
 
 ## Build and install a wheel
 

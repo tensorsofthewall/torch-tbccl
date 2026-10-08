@@ -2,7 +2,7 @@
 
 | | Value |
 |---|---|
-| Package version | 0.2.0.dev0 (development; no release has been published) |
+| Package version | 0.2.0rc1 (release candidate; no final release has been published) |
 | PyTorch | 2.13.x (`torch>=2.13,<2.14`), validated with 2.13.0; the extension is tied to the minor series it was built with |
 | CPython | 3.13 only (`>=3.13,<3.14`) |
 | TBCCL C ABI | 1 (`SUPPORTED_C_ABI`) |

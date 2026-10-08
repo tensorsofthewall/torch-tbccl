@@ -2,7 +2,7 @@
 
 torch-tbccl is an out-of-tree PyTorch `torch.distributed` backend named `"tbccl"`. It adapts PyTorch's c10d process groups onto an installed [TBCCL](https://github.com/tensorsofthewall/tbccl) runtime, so PyTorch programs can communicate between heterogeneous machines (for example a Linux host with an NVIDIA GPU and a Mac) over TCP, including a direct Thunderbolt 4 link. It is an adapter: all transport, algorithm and staging logic lives in TBCCL. It does not aim for NCCL feature parity.
 
-> **Status:** development version 0.2.0.dev0, experimental, no release published. Validated tuple: **PyTorch 2.13.x**, **CPython 3.13**, TBCCL **C ABI 1 / wire protocol 4**, on Linux x86-64 (CPU and CUDA 13) and macOS arm64 (CPU and MPS). Anything else is untested.
+> **Status:** release candidate **0.2.0rc1** (pre-release, experimental; not production-ready). The final 0.2.0 has not been released. Validated tuple: **PyTorch 2.13.x**, **CPython 3.13**, TBCCL **C ABI 1 / wire protocol 4**, on Linux x86-64 (CPU and CUDA 13) and macOS arm64 (CPU and MPS). Anything else is untested.
 
 ## What you can use it for
 
@@ -61,7 +61,7 @@ See [compatibility](docs/reference/compatibility.md) and the draft [validation](
 
 The documentation is in `docs/` and builds with `make docs`: [getting started](docs/getting-started/index.md), [guides](docs/guides/index.md), [concepts](docs/concepts/index.md), [reference](docs/reference/index.md). Contributing: `CONTRIBUTING.md` and `AGENTS.md`.
 
-The hosted documentation is at https://torch-tbccl.tensorsofthewall.com/ (development documentation built from `main` until the first release); you can also build it with `make docs`. Related projects and their documentation: `docs/related-projects.md`.
+The hosted documentation is at https://torch-tbccl.tensorsofthewall.com/ (`latest` is development documentation built from `main`; release-candidate versions appear as numbered versions, and `stable` does not exist until the final release); you can also build it with `make docs`. Related projects and their documentation: `docs/related-projects.md`.
 
 ## License
 

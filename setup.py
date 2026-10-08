@@ -31,7 +31,7 @@ def check_compatibility(root, inc):
     hdr = os.path.join(inc, "tbccl", "tbccl.h")
     m = os.path.isfile(hdr) and re.search(r"#\s*define\s+TBCCL_C_ABI_VERSION\s+(\d+)", open(hdr).read())
     if not m:
-        fail(f"{hdr} does not define TBCCL_C_ABI_VERSION; {root} is not a TBCCL prefix this package can build against (needs TBCCL >= 0.5.0)")
+        fail(f"{hdr} does not define TBCCL_C_ABI_VERSION; {root} is not a TBCCL prefix this package can build against (needs TBCCL >= 0.6.0)")
     abi = int(m.group(1))
     if abi not in ns["SUPPORTED_C_ABI"]:
         fail(f"the TBCCL prefix {root} has C ABI {abi}; torch-tbccl {ns['__version__']} supports C ABI {list(ns['SUPPORTED_C_ABI'])}. "

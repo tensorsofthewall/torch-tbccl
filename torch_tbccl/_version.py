@@ -1,4 +1,4 @@
-__version__ = "0.2.0.dev0"
+__version__ = "0.2.0rc1"
 
 # torch minor series (major.minor) this package has been built and tested against. The compiled extension is tied to the torch it was built
 # with (C++ ABI): torch_tbccl refuses to import when the running torch's major.minor differs from the one recorded at build time, and

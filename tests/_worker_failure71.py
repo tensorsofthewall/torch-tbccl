@@ -4,7 +4,7 @@ Peer exits (rank 1 dies abruptly with os._exit(9); the survivors must fail withi
   recv_peer_exit[_blocking]   rank 0 waits in irecv / a blocking recv
   send_peer_exit              rank 0's 256 MiB isend can never complete
   allreduce_peer_exit_before  the peer is gone before the collective starts
-  allreduce_peer_exit_during  the peer dies in the middle of a 128 MiB all_reduce
+  allreduce_peer_exit_during  the peer dies in the middle of a 256 MiB all_reduce
   allreduce_w3                world 3: rank 2 dies, ranks 0 and 1 are in an all_reduce
   ddp_peer_exit               rank 1 dies between DDP steps; rank 0's next backward must raise
 Abort / teardown with a silent but alive peer (released through the c10d store, unrelated to TBCCL's socket):
@@ -96,10 +96,10 @@ elif mode == "allreduce_peer_exit_before":
     finish()
 
 elif mode == "allreduce_peer_exit_during":
-    x = torch.ones(32 * MB, device=dev)  # 128 MiB
+    x = torch.ones(64 * MB, device=dev)  # 256 MiB
     w = dist.all_reduce(x, async_op=True)
     if rank == 1:
-        time.sleep(0.03)
+        time.sleep(0.005)  # far less than the time two 256 MiB transfers need even on a fast host (a 30 ms delay let the whole collective finish on an M1)
         die()
     expect_failure(w.wait, "all_reduce wait (peer died mid-collective)")
     # the group stays failed: a later submission fails promptly instead of hanging

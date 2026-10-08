@@ -13,8 +13,10 @@ mkdir -p "$OUT"
 RAW=$(mktemp -d "${TMPDIR:-/tmp}/torch-tbccl-wheel.XXXXXX")
 trap 'rm -rf "$RAW"' EXIT
 if [ "$(uname -s)" = Darwin ]; then
-    # setuptools would otherwise build universal2, whose x86_64 slice cannot link the arm64-only libtbccl
+    # setuptools would otherwise build universal2 (a python.org interpreter is universal2): the x86_64 slice cannot link the arm64-only libtbccl,
+    # and the wheel tag would claim x86_64 support
     export ARCHFLAGS="-arch arm64"
+    export _PYTHON_HOST_PLATFORM="macosx-${MACOSX_DEPLOYMENT_TARGET:?set MACOSX_DEPLOYMENT_TARGET}-arm64"
 fi
 python -m build --wheel --no-isolation -o "$RAW" "$HERE"
 case "$(uname -s)" in

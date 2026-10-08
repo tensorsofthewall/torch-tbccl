@@ -3,7 +3,7 @@
 #   TBCCL_ROOT=<prefix> tools/build_release_wheel.sh <out-dir>
 # Linux: run inside a manylinux_2_28 environment with the CUDA 13 toolkit headers and PyTorch 2.13 installed; the wheel is built, then repaired with auditwheel
 # (PyTorch's own libraries and the CUDA runtime that PyTorch brings are excluded, never bundled), and the result must be a genuine manylinux wheel.
-# macOS: build on arm64 with MACOSX_DEPLOYMENT_TARGET set (the wheel tag follows it); delocate lists the dependencies and only system libraries and PyTorch may appear.
+# macOS: build on arm64 with MACOSX_DEPLOYMENT_TARGET set (the wheel tag follows it); nothing is vendored, and the inspector fails on any dependency that is not a system library or PyTorch's own.
 # Either way the wheel is then inspected (tag, licence, version, no private paths, no development files).
 set -euo pipefail
 OUT=${1:?output directory}
@@ -21,7 +21,8 @@ case "$(uname -s)" in
             -w "$OUT" "$RAW"/*.whl ;;
     Darwin)
         : "${MACOSX_DEPLOYMENT_TARGET:?set MACOSX_DEPLOYMENT_TARGET (for example 14.0) so the wheel tag is deliberate}"
-        delocate-listdeps --all "$RAW"/*.whl
+        # PyTorch's libraries must stay where the torch package keeps them, so nothing is vendored (delocate would try to and cannot resolve them); the inspector
+        # below lists every dependency of the extension and fails on anything that is not a system library or one of PyTorch's own.
         cp "$RAW"/*.whl "$OUT"/ ;;
     *) echo "unsupported platform" >&2; exit 1 ;;
 esac

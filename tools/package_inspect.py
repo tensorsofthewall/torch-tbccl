@@ -115,6 +115,12 @@ def main():
             tbccl_deps = [n for n in needed if "tbccl" in os.path.basename(n)]
             if tbccl_deps:
                 problems.append(f"the extension depends on a shared libtbccl at run time: {tbccl_deps}")
+            if sys.platform == "darwin":
+                # PyTorch's own libraries are found through the rpath of the installed torch package and must never be vendored into this wheel; everything else must be a system library
+                allowed = re.compile(r"^(/System/Library/|/usr/lib/|@rpath/(libtorch|libtorch_cpu|libtorch_python|libc10)\.dylib$)")
+                for n in needed:
+                    if not allowed.match(n):
+                        problems.append(f"dependency outside the system libraries and PyTorch's own: {n}")
             apple = [n for n in needed if re.search(r"/(Metal|Foundation)\.framework/|libobjc", n)]
             report["metal_frameworks"] = bool(apple)
             if apple and sys.platform != "darwin":

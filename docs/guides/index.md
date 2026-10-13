@@ -1,3 +1,7 @@
+---
+orphan: true
+---
+
 # Guides
 
 ```{toctree}
@@ -5,5 +9,6 @@
 
 ddp
 mps
+verify-active
 troubleshooting
 ```

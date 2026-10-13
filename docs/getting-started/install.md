@@ -1,49 +1,43 @@
 # Installing torch-tbccl
 
-torch-tbccl is built from source against an **installed** [TBCCL](https://github.com/tensorsofthewall/tbccl) prefix and distributed as a platform wheel. libtbccl is a build-time input and is linked statically into the extension, so the wheel needs no TBCCL at run time. There is no published binary release yet.
+torch-tbccl is distributed as a platform wheel that contains its own statically linked TBCCL runtime. Install the matching PyTorch first, then the wheel.
 
-## Validated tuple
+## Requirements
 
-| | |
-|---|---|
-| torch-tbccl | 0.2.0rc1 (release candidate) |
-| PyTorch | 2.13.x (validated with 2.13.0) |
-| CPython | 3.13 |
-| TBCCL | C ABI 1, wire protocol 4 |
-| Platforms | Linux x86-64 (CPU and CUDA 13) and macOS arm64 (CPU and MPS) |
+| | Linux x86-64 | macOS arm64 (Apple silicon) |
+|---|---|---|
+| Python | **3.13** (the wheel is `cp313`; other versions are not supported) | **3.13** |
+| PyTorch | **2.13.x, the CUDA 13 build** (`+cu130`) | **2.13.x** from PyPI (the macOS wheel, built with MPS) |
+| Devices | CPU and CUDA | CPU and MPS |
+| OS | glibc 2.27 or newer (`manylinux_2_27`/`manylinux_2_28` wheel) | macOS 14 or newer (`macosx_14_0_arm64` wheel) |
 
-Anything else is untested. See [Compatibility](../reference/compatibility.md).
-
-```{note}
-**Release candidate (pre-release) instructions.** 0.2.0rc1 wheels are attached to the GitHub pre-release `v0.2.0rc1` and published to TestPyPI. They are for validation, not production use. Install PyTorch from the CUDA 13 build (Linux) or PyPI (macOS) first, then either `pip install --pre --no-deps -i https://test.pypi.org/simple/ torch-tbccl==0.2.0rc1` or `pip install torch_tbccl-0.2.0rc1-*.whl` from the release page. The wheel contains the TBCCL runtime; building from source against a prefix (below) remains supported. The final install commands will replace this note.
+```{warning}
+**On Linux the wheel needs the CUDA build of PyTorch**, because the extension is linked against `libtorch_cuda.so` and `libc10_cuda.so`. A CPU-only PyTorch for Linux does not provide them and `import torch_tbccl` fails with an `ImportError`. You do not need a GPU in the machine to import it, but the PyTorch build must be the CUDA 13 one. Validated: PyTorch 2.13.0 (`+cu130`). Mixing in another CUDA series of PyTorch is not validated.
 ```
 
-## Build and install a wheel
+The compiled extension is tied to the torch minor series it was built with: `import torch_tbccl` refuses another series with a rebuild hint (`TORCH_TBCCL_ALLOW_TORCH_MISMATCH=1` overrides the check at your own risk).
+
+## Install the release-candidate wheel
+
+The 0.2.0rc1 wheels are attached to the GitHub pre-release [`v0.2.0rc1`](https://github.com/tensorsofthewall/torch-tbccl/releases/tag/v0.2.0rc1). They are not published on PyPI or TestPyPI. Verify the download against `SHA256SUMS` from the same release if you like.
+
+**Linux x86-64:**
 
 ```sh
-# 1. an environment with the matching torch (the build imports it)
 uv venv --python 3.13 .venv && . .venv/bin/activate
-uv pip install torch==2.13.0 setuptools wheel build
-# Linux with CUDA: add --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
-
-# 2. build the wheel against the TBCCL prefix and install it
-TBCCL_ROOT=/path/to/tbccl-install python -m build --wheel --no-isolation -o dist .
-uv pip install dist/torch_tbccl-*.whl
+uv pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
+uv pip install --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.2.0rc1/torch_tbccl-0.2.0rc1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
 ```
 
-| Build | Needs |
-|---|---|
-| Linux x86-64 with CUDA | a TBCCL prefix that includes `libtbccl_cuda.a` and a CUDA-enabled torch (its pip `nvidia/` runtime is used) |
-| Linux host-only | a prefix without the CUDA component, or a CPU-only torch: CPU tensors only |
-| macOS arm64 | TBCCL's host-only prefix and a torch built with MPS (the PyTorch macOS wheel): CPU and MPS tensors; needs the Xcode command-line tools |
+**macOS arm64:**
 
-The TBCCL static libraries must be built position-independent (TBCCL does this by default). The build refuses a prefix with an unsupported C ABI.
-
-```{important}
-Never use `--reinstall` on an environment that holds torch: it rewrites torch. The compiled extension is tied to torch's minor series, and `import torch_tbccl` refuses another series with a rebuild hint (`TORCH_TBCCL_ALLOW_TORCH_MISMATCH=1` overrides the check at your own risk).
+```sh
+uv venv --python 3.13 .venv && . .venv/bin/activate
+uv pip install torch==2.13.0
+uv pip install --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.2.0rc1/torch_tbccl-0.2.0rc1-cp313-cp313-macosx_14_0_arm64.whl
 ```
 
-For development, install editable with `TBCCL_ROOT=... uv pip install --no-build-isolation --no-deps -e .`.
+`--no-deps` keeps the package manager from replacing the PyTorch you just chose. Plain `pip` works the same way (`pip install --no-deps <wheel URL>`). Never use `--reinstall` on an environment that holds torch: it rewrites torch.
 
 ## Check the installation
 
@@ -51,8 +45,40 @@ For development, install editable with `TBCCL_ROOT=... uv pip install --no-build
 python -m torch_tbccl.info
 ```
 
-prints the package, torch, libtbccl, C ABI and wire protocol versions and the devices this build supports.
+prints the package, torch, libtbccl, C ABI and wire protocol versions and the devices this build supports, for example:
+
+```text
+torch_tbccl        0.2.0rc1
+torch_running      2.13.0+cu130
+libtbccl           0.6.0
+c_abi              1
+wire_protocol      4
+devices            ['cpu', 'cuda']
+backend            tbccl
+registered         True
+```
+
+`registered True` means `"tbccl"` is a known `torch.distributed` backend in this process. Every machine of a job must report the same wire protocol.
+
+## Build from source
+
+Building is only needed on a platform or PyTorch version without a wheel, or to change the code. It is separate from using the wheel: libtbccl is then a build-time input, an **installed** [TBCCL](https://tbccl.tensorsofthewall.com/en/latest/getting-started/install.html) prefix, linked statically into the extension.
+
+```sh
+uv venv --python 3.13 .venv && . .venv/bin/activate
+uv pip install torch==2.13.0 setuptools wheel build        # Linux CUDA: add the --index-url/--extra-index-url flags shown above
+TBCCL_ROOT=/path/to/tbccl-install python -m build --wheel --no-isolation -o dist .
+uv pip install --no-deps dist/torch_tbccl-*.whl
+```
+
+| Build | Needs |
+|---|---|
+| Linux x86-64 with CUDA | a TBCCL prefix that includes `libtbccl_cuda.a` (the CUDA archive) and a CUDA-enabled torch (its pip `nvidia/` runtime is used) |
+| Linux host-only | a prefix without the CUDA component, or a CPU-only torch: CPU tensors only |
+| macOS arm64 | TBCCL's macOS prefix and the PyTorch macOS wheel (built with MPS); the Xcode command-line tools |
+
+The TBCCL static libraries must be position-independent (TBCCL's default). The build refuses a prefix with an unsupported C ABI. For development install editable with `TBCCL_ROOT=... uv pip install --no-build-isolation --no-deps -e .`.
 
 ## After upgrading TBCCL
 
-TBCCL's wire protocol must match across ranks and across everything linked against it. After installing a TBCCL with a different wire protocol version, rebuild torch-tbccl against the new prefix ([TBCCL versioning](https://tbccl.tensorsofthewall.com/en/stable/reference/versioning.html)).
+TBCCL's wire protocol must match across ranks. Because the wheel bundles TBCCL, upgrading means installing a newer torch-tbccl wheel on **every** machine of the job. Ranks built against different wire protocols cannot connect ([TBCCL versioning](https://tbccl.tensorsofthewall.com/en/latest/reference/versioning.html)).

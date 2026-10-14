@@ -17,6 +17,8 @@ def _read(*parts):
 
 
 def _source_env_vars():
+    if not os.path.isdir(os.path.join(ROOT, "csrc")):
+        pytest.skip("the package sources are not in this copy (the release jobs strip them so the installed wheel is imported)")
     names = set()
     for base in ("csrc", "torch_tbccl"):
         for dirpath, _, files in os.walk(os.path.join(ROOT, base)):

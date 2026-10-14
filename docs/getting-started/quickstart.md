@@ -21,7 +21,7 @@ dist.destroy_process_group()
 ```
 
 ```sh
-OMP_NUM_THREADS=2 TBCCL_LOCAL_ENDPOINT=127.0.0.1:0 torchrun --standalone --nproc-per-node 2 allreduce.py
+OMP_NUM_THREADS=2 TBCCL_LOCAL_ENDPOINT=127.0.0.1:0 .venv/bin/torchrun --standalone --nproc-per-node 2 allreduce.py
 ```
 
 Each rank prints its rank, the backend name `tbccl` and `tensor([3.])`; the two lines may interleave. Set `OMP_NUM_THREADS` (for example to 2) when several ranks share one machine, or they starve each other.
@@ -34,9 +34,9 @@ Use PyTorch's normal rendezvous and give each host its own reachable address in 
 
 ```sh
 # host A (rank 0)
-TBCCL_LOCAL_ENDPOINT=<A address>:0 torchrun --nnodes 2 --nproc-per-node 1 --node-rank 0 --master-addr <A address> --master-port 29500 allreduce.py
+TBCCL_LOCAL_ENDPOINT=<A address>:0 .venv/bin/torchrun --nnodes 2 --nproc-per-node 1 --node-rank 0 --master-addr <A address> --master-port 29500 allreduce.py
 # host B (rank 1)
-TBCCL_LOCAL_ENDPOINT=<B address>:0 torchrun --nnodes 2 --nproc-per-node 1 --node-rank 1 --master-addr <A address> --master-port 29500 allreduce.py
+TBCCL_LOCAL_ENDPOINT=<B address>:0 .venv/bin/torchrun --nnodes 2 --nproc-per-node 1 --node-rank 1 --master-addr <A address> --master-port 29500 allreduce.py
 ```
 
 Rank 0's host is `--master-addr`. On a Mac, run the rank in a live terminal or SSH session and allow the Python process through the macOS firewall prompt the first time; a background job without a session cannot reach the network ([troubleshooting](../guides/troubleshooting.md)).
@@ -50,7 +50,7 @@ Put tensors on `cpu`, `cuda` (Linux) or `mps` (macOS) as usual. A group may mix 
 `examples/ddp_mlp.py` is a small distributed-data-parallel training run on synthetic data, checked against a single-process reference:
 
 ```sh
-TBCCL_LOCAL_ENDPOINT=127.0.0.1:0 torchrun --standalone --nproc-per-node 2 examples/ddp_mlp.py
+TBCCL_LOCAL_ENDPOINT=127.0.0.1:0 .venv/bin/torchrun --standalone --nproc-per-node 2 examples/ddp_mlp.py
 ```
 
 See the [DDP guide](../guides/ddp.md). To confirm a job really uses TBCCL see [how do I know TBCCL is being used?](../guides/verify-active.md).

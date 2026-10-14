@@ -63,7 +63,7 @@ Two hosts, the PyTorch/TBCCL relationship and DDP: [quickstart](docs/getting-sta
 | TBCCL | C ABI 1, wire protocol 4 (bundled in the wheel) |
 | Platforms | Linux x86-64 (CPU, CUDA 13), macOS arm64 (CPU, MPS) |
 
-See the [compatibility page](docs/reference/compatibility.md), the ecosystem [compatibility matrix](https://tbccl.tensorsofthewall.com/en/latest/reference/compatibility-matrix.html) and the [validated configurations](docs/project/validated-configurations.md).
+See the [compatibility page](docs/reference/compatibility.md), the [current ecosystem status](https://tbccl.tensorsofthewall.com/en/latest/project/ecosystem.html) and the ecosystem [compatibility matrix](https://tbccl.tensorsofthewall.com/en/latest/reference/compatibility-matrix.html) and the [validated configurations](docs/project/validated-configurations.md).
 
 ## Documentation
 
@@ -75,7 +75,7 @@ Reductions are `SUM` only; float16/bfloat16 reductions only at world size 2; `ga
 
 ## Development
 
-`CONTRIBUTING.md` explains the workflow and `AGENTS.md` the rules for the code base; the [development documentation](docs/development/index.md) covers building, testing and where a change belongs. Security: `SECURITY.md`. Changes for users: `CHANGELOG.md`. Releasing: `RELEASE.md`.
+[MAINTENANCE.md](MAINTENANCE.md) records the maintenance policy and what needs physical requalification. `CONTRIBUTING.md` explains the workflow and `AGENTS.md` the rules for the code base; the [development documentation](docs/development/index.md) covers building, testing and where a change belongs. Security: `SECURITY.md`. Changes for users: `CHANGELOG.md`. Releasing: `RELEASE.md`.
 
 ## License
 

@@ -12,6 +12,7 @@ Find the symptom, check the likely cause with the diagnostic, apply the fix. Sta
 | `ImportError` mentioning the C ABI | built from source against a TBCCL prefix with an unsupported C ABI | `tbccl-info` of the prefix | rebuild against a compatible prefix |
 | a warning that the wire protocol is untested | built against a TBCCL wire protocol this release was not tested with | `python -m torch_tbccl.info` | use the released wheel; ranks with different wire versions cannot connect |
 | installing the wheel changed my torch | the wheel was installed without `--no-deps` | `pip list \| grep torch` | reinstall the intended torch and use `--no-deps`; never use `--reinstall` |
+| `UserWarning: Failed to initialize NumPy: No module named 'numpy'` at import | the environment has no NumPy; PyTorch warns once | `python -c "import numpy"` | harmless for torch-tbccl (the validated installs have no NumPy and run `all_reduce` on CPU, CUDA and MPS); `uv pip install --python .venv/bin/python numpy` silences it |
 
 ## Process-group creation
 

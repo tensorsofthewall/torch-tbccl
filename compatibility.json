@@ -1,6 +1,10 @@
 {
   "schema_version": 1,
   "project": "torch-tbccl",
+  "release_assets": [
+    "torch_tbccl-{version}-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+    "torch_tbccl-{version}-cp313-cp313-macosx_14_0_arm64.whl"
+  ],
   "package": {
     "development_version": "0.2.0",
     "release_candidate": false,

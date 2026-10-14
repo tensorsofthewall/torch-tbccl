@@ -17,16 +17,16 @@ torch-tbccl is distributed as a platform wheel that contains its own statically 
 
 The compiled extension is tied to the torch minor series it was built with: `import torch_tbccl` refuses another series with a rebuild hint (`TORCH_TBCCL_ALLOW_TORCH_MISMATCH=1` overrides the check at your own risk).
 
-## Install the release-candidate wheel
+## Install the wheel
 
-The 0.2.0rc1 wheels are attached to the GitHub pre-release [`v0.2.0rc1`](https://github.com/tensorsofthewall/torch-tbccl/releases/tag/v0.2.0rc1). They are not published on PyPI or TestPyPI. Verify the download against `SHA256SUMS` from the same release if you like.
+The 0.2.0 wheels are attached to the GitHub release [`v0.2.0`](https://github.com/tensorsofthewall/torch-tbccl/releases/tag/v0.2.0). They are not published on PyPI or TestPyPI. Verify the download against `SHA256SUMS` from the same release if you like.
 
 **Linux x86-64:**
 
 ```sh
 uv venv --python 3.13 .venv && . .venv/bin/activate
 uv pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
-uv pip install --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.2.0rc1/torch_tbccl-0.2.0rc1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+uv pip install --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.2.0/torch_tbccl-0.2.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
 ```
 
 **macOS arm64:**
@@ -34,7 +34,7 @@ uv pip install --no-deps https://github.com/tensorsofthewall/torch-tbccl/release
 ```sh
 uv venv --python 3.13 .venv && . .venv/bin/activate
 uv pip install torch==2.13.0
-uv pip install --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.2.0rc1/torch_tbccl-0.2.0rc1-cp313-cp313-macosx_14_0_arm64.whl
+uv pip install --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.2.0/torch_tbccl-0.2.0-cp313-cp313-macosx_14_0_arm64.whl
 ```
 
 `--no-deps` keeps the package manager from replacing the PyTorch you just chose. Plain `pip` works the same way (`pip install --no-deps <wheel URL>`). Never use `--reinstall` on an environment that holds torch: it rewrites torch.
@@ -48,7 +48,7 @@ python -m torch_tbccl.info
 prints the package, torch, libtbccl, C ABI and wire protocol versions and the devices this build supports, for example:
 
 ```text
-torch_tbccl        0.2.0rc1
+torch_tbccl        0.2.0
 torch_running      2.13.0+cu130
 libtbccl           0.6.0
 c_abi              1

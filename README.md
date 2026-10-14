@@ -4,7 +4,7 @@
 
 torch-tbccl is a PyTorch `torch.distributed` backend named `"tbccl"` that lets PyTorch programs communicate between heterogeneous machines, for example a Linux host with an NVIDIA GPU and a Mac, over TCP, including a direct Thunderbolt 4 link. PyTorch itself is not modified: you `import torch_tbccl` and use the normal `torch.distributed` API.
 
-> **Status:** release candidate **0.2.0rc1** (pre-release, experimental; not production-ready). The final 0.2.0 has not been released. Validated tuple: **PyTorch 2.13.x**, **CPython 3.13**, TBCCL **C ABI 1 / wire protocol 4**, on Linux x86-64 (CPU and CUDA 13) and macOS arm64 (CPU and MPS). Anything else is untested.
+> **Status:** **0.2.0** (first release; experimental). Validated tuple: **PyTorch 2.13.x**, **CPython 3.13**, TBCCL **C ABI 1 / wire protocol 4**, on Linux x86-64 (CPU and CUDA 13) and macOS arm64 (CPU and MPS). Anything else is untested.
 
 It is one of three independent adapters over the [TBCCL](https://github.com/tensorsofthewall/tbccl) runtime (the others are [vllm-tbccl](https://github.com/tensorsofthewall/vllm-tbccl) and [exo-tbccl](https://github.com/tensorsofthewall/exo-tbccl)). It is an adapter only: transport, collectives and staging live in TBCCL. It does not aim for NCCL feature parity.
 
@@ -25,7 +25,7 @@ Install the CUDA 13 build of PyTorch 2.13 first, then the release-candidate whee
 uv venv --python 3.13 .venv && . .venv/bin/activate
 # Linux (x86-64, CUDA 13 build of PyTorch; a CPU-only PyTorch does not work with the Linux wheel):
 uv pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cu130 --extra-index-url https://pypi.org/simple --index-strategy unsafe-best-match
-uv pip install --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.2.0rc1/torch_tbccl-0.2.0rc1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+uv pip install --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.2.0/torch_tbccl-0.2.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
 # macOS (Apple silicon): uv pip install torch==2.13.0, then the macosx_14_0_arm64 wheel from the same release page
 python -m torch_tbccl.info
 ```

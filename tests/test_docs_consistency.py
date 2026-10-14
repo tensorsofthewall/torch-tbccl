@@ -49,7 +49,7 @@ def test_documented_versions_match_the_manifest():
     for series in manifest["frameworks"]["torch"]["series"]:
         assert f"{series}" in compat
     for abi in manifest["requires_tbccl"]["c_abi"]:
-        assert f"| {abi} " in compat or f"`SUPPORTED_C_ABI`" in compat
+        assert f"| {abi} " in compat or "`SUPPORTED_C_ABI`" in compat
     for wire in manifest["requires_tbccl"]["wire_protocol"]:
         assert str(wire) in compat
 

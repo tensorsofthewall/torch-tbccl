@@ -97,11 +97,12 @@ elif mode == "allreduce_peer_exit_before":
 
 elif mode == "allreduce_peer_exit_during":
     x = torch.ones(64 * MB, device=dev)  # 256 MiB
-    w = dist.all_reduce(x, async_op=True)
     if rank == 1:
+        dist.all_reduce(x, async_op=True)
         time.sleep(0.005)  # far less than the time two 256 MiB transfers need even on a fast host (a 30 ms delay let the whole collective finish on an M1)
         die()
-    expect_failure(w.wait, "all_reduce wait (peer died mid-collective)")
+    # an MPS tensor is synchronized before submission, so the peer's death may be seen at the submission or at the wait; either must raise the structured error
+    expect_failure(lambda: dist.all_reduce(x, async_op=True).wait(), "all_reduce (peer died mid-collective)")
     # the group stays failed: a later submission fails promptly instead of hanging
     expect_failure(lambda: dist.all_reduce(torch.ones(8, device=dev)), "all_reduce after the failure")
     finish()

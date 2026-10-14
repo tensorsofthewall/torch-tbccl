@@ -2,7 +2,7 @@
 
 | | Value |
 |---|---|
-| Package version | 0.2.0rc1 (release candidate; no final release has been published) |
+| Package version | 0.2.0 |
 | PyTorch | 2.13.x (`torch>=2.13,<2.14`), validated with 2.13.0; the extension is tied to the minor series it was built with |
 | CPython | 3.13 only (`>=3.13,<3.14`) |
 | TBCCL C ABI | 1 (`SUPPORTED_C_ABI`) |
@@ -13,10 +13,10 @@
 
 | Wheel | Platform | PyTorch it needs |
 |---|---|---|
-| `torch_tbccl-0.2.0rc1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl` | Linux x86-64 | the CUDA 13 build of PyTorch 2.13 (`+cu130`) |
-| `torch_tbccl-0.2.0rc1-cp313-cp313-macosx_14_0_arm64.whl` | macOS 14 or newer, Apple silicon | PyTorch 2.13 from PyPI (MPS-enabled) |
+| `torch_tbccl-0.2.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl` | Linux x86-64 | the CUDA 13 build of PyTorch 2.13 (`+cu130`) |
+| `torch_tbccl-0.2.0-cp313-cp313-macosx_14_0_arm64.whl` | macOS 14 or newer, Apple silicon | PyTorch 2.13 from PyPI (MPS-enabled) |
 
-Both contain libtbccl 0.6.0rc1 statically linked. See [installing](../getting-started/install.md).
+Both contain libtbccl 0.6.0 statically linked. See [installing](../getting-started/install.md).
 
 ## Relationship to the other projects
 

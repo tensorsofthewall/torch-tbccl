@@ -96,3 +96,30 @@ def test_install_commands_name_the_environment_and_keep_torch():
             assert "--no-deps" in ln and "--python .venv/bin/python" in ln, ln
         assert "--torch-backend cu130" in text
         assert "source .venv/bin/activate" not in text and ". .venv/bin/activate" not in text
+
+
+def test_install_page_wheel_urls_name_the_released_version_and_tested_torch():
+    text = _read("docs", "getting-started", "install.md")
+    version = re.search(r'__version__ = "([^"]+)"', _read("torch_tbccl", "_version.py")).group(1)
+    torch_version = re.search(r'TESTED_TORCH_VERSION = "([^"]+)"', _read("torch_tbccl", "_version.py")).group(1)
+    urls = re.findall(r"https://github\.com/tensorsofthewall/torch-tbccl/releases/download/(v[^/\s)`]+)/(\S+?\.whl)", text)
+    assert urls, "no wheel URLs found"
+    for tag, name in urls:
+        assert tag == "v" + version, (tag, version)
+        assert name.startswith("torch_tbccl-%s-cp313-cp313-" % version), name
+    assert 'torch=={}"'.format(torch_version) in text
+
+
+def test_two_host_commands_use_one_consistent_example_addressing():
+    text = _read("docs", "getting-started", "quickstart.md")
+    section = text.split("## Across two hosts")[1].split("## Devices")[0]
+    addresses = set(re.findall(r"\b192\.168\.\d+\.\d+\b", section))
+    assert addresses == {"192.168.77.1", "192.168.77.2"}, addresses
+    assert "192.168.3." not in text
+    assert section.count("--rdzv-conf timeout=60 two_host_allreduce.py") == 2
+
+
+def test_onboarding_links_point_to_the_setup_and_troubleshooting_pages():
+    text = _read("docs", "getting-started", "quickstart.md")
+    assert "getting-started/two-machine-thunderbolt.html" in text
+    assert "guides/thunderbolt-troubleshooting.html" in text

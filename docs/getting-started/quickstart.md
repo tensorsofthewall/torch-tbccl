@@ -56,18 +56,18 @@ Every address in these commands is a link address, so the rendezvous and the dat
 
 ### 3. Run it
 
-Start rank 0 first, then rank 1 within about a minute (they wait for each other). Here the Mac is rank 0.
+Start rank 0 first, then rank 1 within about a minute: `--rdzv-conf timeout=60` makes `torchrun` give up after 60 seconds if the other machine has not joined (without it `torchrun` waits 15 minutes), and the script's own `--timeout` (60 seconds by default) bounds the rendezvous store and the collective, so start both commands close together. Here the Mac is rank 0. (The Mac as rank 0 is a choice; the Linux machine can be rank 0 if you swap the addresses and rank numbers consistently.)
 
 ```sh
 # Mac (rank 0), in a live Terminal or SSH session
 TBCCL_LOCAL_ENDPOINT=192.168.77.1:0 .venv/bin/torchrun --nnodes 2 --nproc-per-node 1 --node-rank 0 \
-    --local-addr 192.168.77.1 --master-addr 192.168.77.1 --master-port 29500 two_host_allreduce.py
+    --local-addr 192.168.77.1 --master-addr 192.168.77.1 --master-port 29500 --rdzv-conf timeout=60 two_host_allreduce.py
 ```
 
 ```sh
 # Linux (rank 1)
 TBCCL_LOCAL_ENDPOINT=192.168.77.2:0 .venv/bin/torchrun --nnodes 2 --nproc-per-node 1 --node-rank 1 \
-    --local-addr 192.168.77.2 --master-addr 192.168.77.1 --master-port 29500 two_host_allreduce.py
+    --local-addr 192.168.77.2 --master-addr 192.168.77.1 --master-port 29500 --rdzv-conf timeout=60 two_host_allreduce.py
 ```
 
 Expected output (each machine prints its own rank's lines; the hostname and versions differ):
@@ -92,7 +92,7 @@ ip -s link show thunderbolt0      # Linux: RX and TX bytes
 netstat -ib -I bridge0            # macOS: Ibytes and Obytes (the Thunderbolt Bridge device name from your Mac)
 ```
 
-The counters of the Thunderbolt interface should grow by megabytes during the run, not kilobytes; counters of Wi-Fi or Ethernet should not. This is the check that the collective used the cable, as opposed to some other network. (It is a design expectation, not yet a measured result on a clean machine.) To confirm that TBCCL, not another backend, handled the operations, see [how do I know TBCCL is being used?](../guides/verify-active.md).
+The counters of the Thunderbolt interface should grow by megabytes during the run, not kilobytes; counters of Wi-Fi or Ethernet should not. This is the check that the collective used the cable, as opposed to some other network. (This is the expected behaviour, not an observed result: this counter check has not yet been run on a real link, and the two-host example itself has so far run only on loopback.) To confirm that TBCCL, not another backend, handled the operations, see [how do I know TBCCL is being used?](../guides/verify-active.md).
 
 ### 5. Clean up
 

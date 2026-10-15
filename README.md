@@ -47,6 +47,8 @@ uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsoft
 
 `--no-deps` keeps the installer from replacing the PyTorch you just installed. `--torch-backend` is a preview feature of `uv pip`; if your uv lacks it, [installing](docs/getting-started/install.md) shows the equivalent explicit PyTorch index. Install the same version on every machine of a job. Details, other platforms, troubleshooting and building from source (developers only): [installing](docs/getting-started/install.md).
 
+**Optional helper.** [`install_adapter.py`](https://tbccl.tensorsofthewall.com/en/latest/getting-started/install-adapters.html) picks the one wheel that matches the environment you name, checks the PyTorch pin and the CUDA/CPU/MPS pairing, verifies the wheel's SHA-256 against the release, installs it with `--no-deps` and runs the check below. It never installs, upgrades or removes PyTorch, and `--dry-run` prints the manual commands. After creating the environment and installing PyTorch as above: `python3 install_adapter.py install --adapter torch --python .venv/bin/python --device cuda` (`cpu`, or `mps` on a Mac). The commands above keep working without it.
+
 ## Verify the installation
 
 ```sh
@@ -82,6 +84,8 @@ The authoritative version table is the [current ecosystem status](https://tbccl.
 ## Documentation
 
 Hosted documentation: https://torch-tbccl.tensorsofthewall.com/ (`stable` is the latest final release, numbered versions are earlier releases, and `latest` is development documentation built from `main`). Build it locally with `make docs`. Pages to start with: [installing](docs/getting-started/install.md), [quickstart](docs/getting-started/quickstart.md), [troubleshooting](docs/guides/troubleshooting.md).
+
+Questions, feedback and what to include in a report: [getting help](https://tbccl.tensorsofthewall.com/en/latest/project/getting-help.html). The projects collect [no telemetry](https://tbccl.tensorsofthewall.com/en/latest/project/privacy.html).
 
 ## Limitations
 

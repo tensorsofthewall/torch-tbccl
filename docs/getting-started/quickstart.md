@@ -115,3 +115,10 @@ TBCCL_LOCAL_ENDPOINT=127.0.0.1:0 .venv/bin/torchrun --standalone --nproc-per-nod
 ```
 
 See the [DDP guide](../guides/ddp.md). To confirm a job really uses TBCCL see [how do I know TBCCL is being used?](../guides/verify-active.md).
+
+## Next steps
+
+Once the two-host all-reduce passes on CPU tensors, the same link can carry the other integrations; each has its own prerequisites and none is needed for the all-reduce:
+
+- **vLLM** pipeline across a CUDA node and a Mac: the [vllm-tbccl quickstart](https://vllm-tbccl.tensorsofthewall.com/en/latest/getting-started/quickstart.html) (needs a local copy of a small model on both machines).
+- **Exo** across a Mac and a Linux CUDA host: the [exo-tbccl two-host guide](https://exo-tbccl.tensorsofthewall.com/en/latest/guides/two-host.html). A passing all-reduce does not prove Exo discovery works: Exo also needs IPv6 link-local multicast on the link.

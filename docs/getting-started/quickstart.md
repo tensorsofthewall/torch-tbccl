@@ -92,7 +92,7 @@ ip -s link show thunderbolt0      # Linux: RX and TX bytes
 netstat -ib -I bridge0            # macOS: Ibytes and Obytes (the Thunderbolt Bridge device name from your Mac)
 ```
 
-The counters of the Thunderbolt interface should grow by megabytes during the run, not kilobytes; counters of Wi-Fi or Ethernet should not. This is the check that the collective used the cable, as opposed to some other network. (This is the expected behaviour, not an observed result: this counter check has not yet been run on a real link, and the two-host example itself has so far run only on loopback.) To confirm that TBCCL, not another backend, handled the operations, see [how do I know TBCCL is being used?](../guides/verify-active.md).
+The counters of the Thunderbolt interface should grow by megabytes during the run, not kilobytes; counters of Wi-Fi or Ethernet should not. This is the check that the collective used the cable, as opposed to some other network. On the maintainers' Mac and Linux pair, a 4 MiB run (`--elements 1048576`) moved about 4.2 MB in each direction on the Thunderbolt interfaces (`thunderbolt0` on Linux; the bridge on the Mac counts roughly twice what the Linux side sent because it also counts the member port), while Wi-Fi and Ethernet moved under 0.1 MB. That is one observation on one pair, not a guarantee. The example passed there with CPU tensors on both machines and with `--device cuda` on Linux together with `--device mps` on the Mac. To confirm that TBCCL, not another backend, handled the operations, see [how do I know TBCCL is being used?](../guides/verify-active.md).
 
 ### 5. Clean up
 

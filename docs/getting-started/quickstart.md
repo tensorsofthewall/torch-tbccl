@@ -56,18 +56,18 @@ Every address in these commands is a link address, so the rendezvous and the dat
 
 ### 3. Run it
 
-Start rank 0 first, then rank 1 within about a minute (they wait for each other). Here the Mac is rank 0.
+Start rank 0 first, then rank 1 within about a minute: `--rdzv-conf timeout=60` makes `torchrun` give up after 60 seconds if the other machine has not joined (without it `torchrun` waits 15 minutes), and the script's own `--timeout` (60 seconds by default) bounds the rendezvous store and the collective, so start both commands close together. Here the Mac is rank 0. (The Mac as rank 0 is a choice; the Linux machine can be rank 0 if you swap the addresses and rank numbers consistently.)
 
 ```sh
 # Mac (rank 0), in a live Terminal or SSH session
 TBCCL_LOCAL_ENDPOINT=192.168.77.1:0 .venv/bin/torchrun --nnodes 2 --nproc-per-node 1 --node-rank 0 \
-    --local-addr 192.168.77.1 --master-addr 192.168.77.1 --master-port 29500 two_host_allreduce.py
+    --local-addr 192.168.77.1 --master-addr 192.168.77.1 --master-port 29500 --rdzv-conf timeout=60 two_host_allreduce.py
 ```
 
 ```sh
 # Linux (rank 1)
 TBCCL_LOCAL_ENDPOINT=192.168.77.2:0 .venv/bin/torchrun --nnodes 2 --nproc-per-node 1 --node-rank 1 \
-    --local-addr 192.168.77.2 --master-addr 192.168.77.1 --master-port 29500 two_host_allreduce.py
+    --local-addr 192.168.77.2 --master-addr 192.168.77.1 --master-port 29500 --rdzv-conf timeout=60 two_host_allreduce.py
 ```
 
 Expected output (each machine prints its own rank's lines; the hostname and versions differ):
@@ -92,7 +92,7 @@ ip -s link show thunderbolt0      # Linux: RX and TX bytes
 netstat -ib -I bridge0            # macOS: Ibytes and Obytes (the Thunderbolt Bridge device name from your Mac)
 ```
 
-The counters of the Thunderbolt interface should grow by megabytes during the run, not kilobytes; counters of Wi-Fi or Ethernet should not. This is the check that the collective used the cable, as opposed to some other network. (It is a design expectation, not yet a measured result on a clean machine.) To confirm that TBCCL, not another backend, handled the operations, see [how do I know TBCCL is being used?](../guides/verify-active.md).
+The counters of the Thunderbolt interface should grow by megabytes during the run, not kilobytes; counters of Wi-Fi or Ethernet should not. This is the check that the collective used the cable, as opposed to some other network. On the maintainers' Mac and Linux pair, a 4 MiB run (`--elements 1048576`) moved about 4.2 MB in each direction on the Thunderbolt interfaces (`thunderbolt0` on Linux; the bridge on the Mac counts roughly twice what the Linux side sent because it also counts the member port), while Wi-Fi and Ethernet moved under 0.1 MB. That is one observation on one pair, not a guarantee. The example passed there with CPU tensors on both machines and with `--device cuda` on Linux together with `--device mps` on the Mac. To confirm that TBCCL, not another backend, handled the operations, see [how do I know TBCCL is being used?](../guides/verify-active.md).
 
 ### 5. Clean up
 
@@ -115,3 +115,10 @@ TBCCL_LOCAL_ENDPOINT=127.0.0.1:0 .venv/bin/torchrun --standalone --nproc-per-nod
 ```
 
 See the [DDP guide](../guides/ddp.md). To confirm a job really uses TBCCL see [how do I know TBCCL is being used?](../guides/verify-active.md).
+
+## Next steps
+
+Once the two-host all-reduce passes on CPU tensors, the same link can carry the other integrations; each has its own prerequisites and none is needed for the all-reduce:
+
+- **vLLM** pipeline across a CUDA node and a Mac: the [vllm-tbccl quickstart](https://vllm-tbccl.tensorsofthewall.com/en/latest/getting-started/quickstart.html) (needs a local copy of a small model on both machines).
+- **Exo** across a Mac and a Linux CUDA host: the [exo-tbccl two-host guide](https://exo-tbccl.tensorsofthewall.com/en/latest/guides/two-host.html). A passing all-reduce does not prove Exo discovery works: Exo also needs IPv6 link-local multicast on the link.

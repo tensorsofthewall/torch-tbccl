@@ -17,6 +17,10 @@ torch-tbccl is distributed as a platform wheel that contains its own statically 
 
 The compiled extension is tied to the torch minor series it was built with: `import torch_tbccl` refuses another series with a rebuild hint (`TORCH_TBCCL_ALLOW_TORCH_MISMATCH=1` overrides the check at your own risk).
 
+## Before you start: uv and Python
+
+The commands below use [uv](https://docs.astral.sh/uv/) to create the environment. If `uv --version` fails, install it (macOS and Linux): `curl -LsSf https://astral.sh/uv/install.sh | sh`, then open a new terminal. You do not need to install Python 3.13 yourself: `uv venv --python 3.13` downloads a suitable interpreter if the machine has none. Run the commands in the directory where you want the environment (`.venv` is created there); use the same layout on both machines of a two-machine job.
+
 ## Install the wheel
 
 The 0.2.0 wheels are attached to the GitHub release [`v0.2.0`](https://github.com/tensorsofthewall/torch-tbccl/releases/tag/v0.2.0). They are not published on PyPI or TestPyPI. Verify the download against `SHA256SUMS` from the same release if you like.
@@ -46,6 +50,19 @@ uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsoft
 ```
 
 `--no-deps` keeps the package manager from replacing the PyTorch you just chose, so install PyTorch first. Plain `pip` works the same way (`.venv/bin/python -m pip install --no-deps <wheel URL>`). Never use `--reinstall` on an environment that holds torch: it rewrites torch.
+
+## Verify the download (optional)
+
+`SHA256SUMS` in the release lists the checksum of each wheel. To check a wheel before installing it, download both files into one directory and compare:
+
+```sh
+curl -fsSLO https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.2.0/SHA256SUMS
+curl -fsSLO <the wheel URL for your machine from above>
+sha256sum -c --ignore-missing SHA256SUMS      # Linux; on macOS: shasum -a 256 -c --ignore-missing SHA256SUMS
+uv pip install --python .venv/bin/python --no-deps ./<the wheel file name>
+```
+
+`<wheel>: OK` means the file matches the release. (The `--ignore-missing` flag skips the entries for the other platform's wheel.)
 
 ## Check the installation
 

@@ -6,10 +6,10 @@ The whole run is bounded by --timeout seconds; nothing here changes any network 
 
 Rank 0 on the machine whose Thunderbolt address is 192.168.77.1:
   TBCCL_LOCAL_ENDPOINT=192.168.77.1:0 torchrun --nnodes 2 --nproc-per-node 1 --node-rank 0 \
-      --local-addr 192.168.77.1 --master-addr 192.168.77.1 --master-port 29500 two_host_allreduce.py
+      --local-addr 192.168.77.1 --master-addr 192.168.77.1 --master-port 29500 --rdzv-conf timeout=60 two_host_allreduce.py
 Rank 1 on the other machine (192.168.77.2):
   TBCCL_LOCAL_ENDPOINT=192.168.77.2:0 torchrun --nnodes 2 --nproc-per-node 1 --node-rank 1 \
-      --local-addr 192.168.77.2 --master-addr 192.168.77.1 --master-port 29500 two_host_allreduce.py
+      --local-addr 192.168.77.2 --master-addr 192.168.77.1 --master-port 29500 --rdzv-conf timeout=60 two_host_allreduce.py
 """
 import argparse
 import datetime

@@ -9,7 +9,7 @@
     "development_version": "0.2.1",
     "release_candidate": false,
     "target_release": "0.2.1",
-    "released": false
+    "released": true
   },
   "python": {"requires": ">=3.13,<3.14"},
   "frameworks": {

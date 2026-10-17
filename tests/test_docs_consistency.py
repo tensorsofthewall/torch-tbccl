@@ -99,6 +99,8 @@ def test_install_commands_name_the_environment_and_keep_torch():
 
 
 def test_install_page_wheel_urls_name_the_released_version_and_tested_torch():
+    if not os.path.isfile(os.path.join(ROOT, "torch_tbccl", "_version.py")):
+        pytest.skip("the package sources are not in this copy (the release jobs strip them so the installed wheel is imported)")
     text = _read("docs", "getting-started", "install.md")
     version = re.search(r'__version__ = "([^"]+)"', _read("torch_tbccl", "_version.py")).group(1)
     torch_version = re.search(r'TESTED_TORCH_VERSION = "([^"]+)"', _read("torch_tbccl", "_version.py")).group(1)

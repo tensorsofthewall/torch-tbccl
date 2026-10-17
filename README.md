@@ -23,6 +23,7 @@ What it covers, by use:
 - **Several hosts:** the same calls between machines over TCP, including a direct Thunderbolt 4 link ([quickstart](docs/getting-started/quickstart.md)).
 - **CUDA with MPS:** a group may mix a CUDA rank on Linux with an MPS rank on a Mac ([MPS guide](docs/guides/mps.md)).
 - **DDP training:** real `DistributedDataParallel` at world sizes 2 to 4, with the validated example `examples/ddp_mlp.py` ([DDP guide](docs/guides/ddp.md)).
+- **Benchmarks:** run PyTorch communication and DDP benchmarks on your own hardware, standalone or through the TBCCL benchmark runner ([benchmarks](docs/benchmarks/index.md), [reference results](docs/benchmarks/results.md)).
 - **Operations:** `send`/`recv`, `isend`/`irecv`, `broadcast`, `all_gather`, `barrier` and `SUM` `all_reduce` at world sizes 1 to 4, with point-to-point and collective calls in flight together. FSDP and everything not listed in [supported operations](docs/reference/supported-operations.md) are not validated.
 
 ## Installation

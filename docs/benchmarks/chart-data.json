@@ -1,0 +1,171 @@
+{
+  "schema": "tbccl-doc-chart-data/1",
+  "accent": "torch",
+  "provenance": "Curated by hand from the tables of docs/benchmarks/results.md. These are published aggregates, not raw measurement records: each value carries the exact text of the table cell it was read from, and no error bar or repetition count has been added that the page does not state. The Markdown tables are authoritative; a test fails when a chart input no longer appears in them.",
+  "charts": [
+    {
+      "id": "ddp-bucket-cap",
+      "title": "DDP training step time by gradient bucket cap, Linux CUDA rank and Mac MPS rank",
+      "summary": "Horizontal bars, lower is better. Median step time of the slower rank was 82.2 ms with a 1 MB bucket cap (range over three repetitions 80.8 to 85.5), 62.2 ms with 5 MB (61.8 to 64.8), 57.4 ms with 25 MB (55.9 to 57.7) and 54.4 ms with 100 MB (53.8 to 55.4). Larger buckets were faster for this model on this link, which is communication-bound. This does not make 100 MB the best bucket size in general.",
+      "conditions": "Model M (8 layers, width 1024, 33.6 MB of gradients), batch 64 per rank, float32, tbccl backend, two ranks over one direct Thunderbolt 4 link, PyTorch 2.13.0, torch-tbccl 0.2.0.dev0.",
+      "page": "results.md",
+      "section": "DDP training step, CUDA and MPS",
+      "statistic": "the median step time of the slower rank, then the median of 3 independent repetitions of 20 steps each; the whisker is the minimum to maximum over the 3 repetitions",
+      "kind": "bars",
+      "series": [
+        {
+          "id": "step",
+          "style": "solid"
+        }
+      ],
+      "panels": [
+        {
+          "unit": "milliseconds per training step",
+          "direction": "lower is better",
+          "note": [
+            "Measured model and link only: not a recommendation for other models or networks"
+          ],
+          "groups": [
+            {
+              "label": "",
+              "bars": [
+                {
+                  "label": "1 MB bucket cap",
+                  "series": "step",
+                  "value": 82.2,
+                  "published": "82.2 ms",
+                  "exact": true,
+                  "n": 3,
+                  "min": 80.8,
+                  "max": 85.5,
+                  "range_published": "80.8-85.5",
+                  "table": {
+                    "section": "DDP training step, CUDA and MPS",
+                    "row": "1 MB",
+                    "column": "step time (median)",
+                    "range_column": "range over 3 repetitions"
+                  }
+                },
+                {
+                  "label": "5 MB bucket cap",
+                  "series": "step",
+                  "value": 62.2,
+                  "published": "62.2 ms",
+                  "exact": true,
+                  "n": 3,
+                  "min": 61.8,
+                  "max": 64.8,
+                  "range_published": "61.8-64.8",
+                  "table": {
+                    "section": "DDP training step, CUDA and MPS",
+                    "row": "5 MB",
+                    "column": "step time (median)",
+                    "range_column": "range over 3 repetitions"
+                  }
+                },
+                {
+                  "label": "25 MB bucket cap",
+                  "series": "step",
+                  "value": 57.4,
+                  "published": "57.4 ms",
+                  "exact": true,
+                  "n": 3,
+                  "min": 55.9,
+                  "max": 57.7,
+                  "range_published": "55.9-57.7",
+                  "table": {
+                    "section": "DDP training step, CUDA and MPS",
+                    "row": "25 MB",
+                    "column": "step time (median)",
+                    "range_column": "range over 3 repetitions"
+                  }
+                },
+                {
+                  "label": "100 MB bucket cap",
+                  "series": "step",
+                  "value": 54.4,
+                  "published": "54.4 ms",
+                  "exact": true,
+                  "n": 3,
+                  "min": 53.8,
+                  "max": 55.4,
+                  "range_published": "53.8-55.4",
+                  "table": {
+                    "section": "DDP training step, CUDA and MPS",
+                    "row": "100 MB",
+                    "column": "step time (median)",
+                    "range_column": "range over 3 repetitions"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "p2p-native-comparison",
+      "title": "Observed completion time of a 16 MiB send with acknowledgement, PyTorch against the native benchmark",
+      "summary": "Two horizontal bars, lower is better. torch-tbccl 10,740 microseconds and the native TBCCL benchmark in the same timing scope 8,697 microseconds, Linux to Mac, CPU tensors. The classification of this evidence under the benchmark runner's strict comparison rule is indeterminate, because the native baseline itself varied by 26 percent between process pairs. The difference is an observation between two programs; it is not an isolated measurement of adapter overhead and not a confirmed regression.",
+      "conditions": "send/recv plus acknowledgement, 16 MiB, float32, cpu to cpu, A to B (Linux source), same process-pair methodology for both programs. The PyTorch figure includes the Python and PyTorch dispatch path and the way the benchmark builds and verifies tensors; this campaign did not separate those.",
+      "page": "results.md",
+      "section": "Point-to-point and blocking collectives, CPU tensors",
+      "statistic": "the median over 6 independent process-pair repetitions of each repetition's median",
+      "kind": "bars",
+      "classification": "indeterminate",
+      "series": [
+        {
+          "id": "torch",
+          "style": "solid"
+        },
+        {
+          "id": "native",
+          "style": "hatch"
+        }
+      ],
+      "panels": [
+        {
+          "unit": "microseconds to acknowledgement",
+          "direction": "lower is better",
+          "note": [
+            "Classification of this evidence: indeterminate",
+            "An observed difference, not isolated adapter overhead"
+          ],
+          "groups": [
+            {
+              "label": "16 MiB, A to B, cpu/cpu",
+              "bars": [
+                {
+                  "label": "torch-tbccl (PyTorch)",
+                  "series": "torch",
+                  "value": 10740,
+                  "published": "10,740 us",
+                  "exact": true,
+                  "n": 6,
+                  "table": {
+                    "section": "Point-to-point and blocking collectives, CPU tensors",
+                    "row": "send/recv + ACK, 16 MiB, A to B",
+                    "column": "torch-tbccl"
+                  }
+                },
+                {
+                  "label": "Native TBCCL, same scope",
+                  "series": "native",
+                  "value": 8697,
+                  "published": "8,697 us",
+                  "exact": true,
+                  "n": 6,
+                  "table": {
+                    "section": "Point-to-point and blocking collectives, CPU tensors",
+                    "row": "send/recv + ACK, 16 MiB, A to B",
+                    "column": "native TBCCL, same scope"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

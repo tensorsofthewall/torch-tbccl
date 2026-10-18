@@ -1,6 +1,6 @@
 # How do I know TBCCL is being used?
 
-A silent fallback to another backend would invalidate a benchmark or a debugging session. These checks confirm that your process group runs on TBCCL.
+A silent fallback to another backend would invalidate a benchmark or a debugging session. Use this page when the backend does not seem to be active (`"tbccl"` is unknown, or you are not sure which backend a job used), and to confirm that your process group runs on TBCCL.
 
 ## 1. The backend name
 

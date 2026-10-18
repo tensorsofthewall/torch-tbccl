@@ -4,7 +4,7 @@ The shared maintenance policy of the TBCCL ecosystem (branches, tag immutability
 
 ## Supported release
 
-torch-tbccl 0.2.1: PyTorch 2.13.x, CPython 3.13, TBCCL 0.6.0 or newer (C ABI 1, wire protocol 4), Linux x86-64 (CUDA 13) and macOS arm64. The current ecosystem status (all four projects and their pins) is in the [ecosystem page](https://tbccl.tensorsofthewall.com/en/latest/project/ecosystem.html), built from [`release/ecosystem.json`](https://github.com/tensorsofthewall/tbccl/blob/main/release/ecosystem.json). Documentation built from a release tag describes that release only and is not updated when other projects release.
+torch-tbccl 0.2.1: PyTorch 2.13.x, CPython 3.13, TBCCL 0.6.1 bundled (minimum 0.6.0; C ABI 1, wire protocol 4), Linux x86-64 (CUDA 13) and macOS arm64. The current ecosystem status (all four projects and their pins) is in the [ecosystem page](https://tbccl.tensorsofthewall.com/en/latest/project/ecosystem.html), built from [`release/ecosystem.json`](https://github.com/tensorsofthewall/tbccl/blob/main/release/ecosystem.json). Documentation built from a release tag describes that release only and is not updated when other projects release.
 
 ## Pins
 
@@ -16,4 +16,4 @@ Runtime sources of this repository: `csrc/` and `torch_tbccl/` (everything that 
 
 ## Automation in this repository
 
-`docs` workflow (every pull request, offline): release state, tooling tests, internal links. `maintenance` workflow (weekly and by hand): release state, stable release surface, links, documentation hosts and the documentation build. `release-preflight` workflow (by hand, with the intended tag). The `guard` job of `release-artifacts` refuses a build whose tag, version, manifest, pin or TBCCL line disagree. `tools/verify_public_release.py` verifies a published release from the outside, and `tools/collect_diagnostics.py` prints the environment report requested by the issue template.
+`docs` workflow (every pull request, offline): release state, release documentation (README, homepage and installation commands against the package version), tooling tests, internal links. `maintenance` workflow (weekly and by hand): release state, stable release surface, links, documentation hosts and the documentation build. `release-preflight` workflow (by hand, with the intended tag; it checks the release documentation against that tag before anything is tagged). The `guard` job of `release-artifacts` refuses a build whose tag, version, manifest, pin or TBCCL line disagree. `tools/verify_public_release.py` verifies a published release from the outside, and `tools/collect_diagnostics.py` prints the environment report requested by the issue template.

@@ -14,11 +14,13 @@ methodology
 
 | I want to... | Read |
 |---|---|
+| see reference measurements with charts | [Results](results.md) |
+| understand what a number does and does not mean | [Methodology and limitations](methodology.md) |
 | run a benchmark on my machine in a minute | [Getting started](getting-started.md) |
 | know what each communication benchmark times | [Communication benchmarks](communication.md) |
 | measure a DDP training step across buckets | [DDP benchmarks](ddp.md) |
-| see reference numbers and how they were obtained | [Results](results.md) |
-| understand what a number does and does not mean | [Methodology and limitations](methodology.md) |
+| generate a report from my run, or compare two runs | the TBCCL runner: [report generation](https://tbccl.tensorsofthewall.com/en/latest/benchmarks/reports.html) and [comparing runs](https://tbccl.tensorsofthewall.com/en/latest/benchmarks/comparing.html) |
+| find out why a run failed | [Getting started](getting-started.md) for the script, [runner troubleshooting](https://tbccl.tensorsofthewall.com/en/latest/benchmarks/troubleshooting.html) for the runner |
 
 Two ways to run the same workloads:
 

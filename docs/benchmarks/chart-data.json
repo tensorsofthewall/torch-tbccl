@@ -12,19 +12,93 @@
       "section": "DDP training step, CUDA and MPS",
       "statistic": "the median step time of the slower rank, then the median of 3 independent repetitions of 20 steps each; the whisker is the minimum to maximum over the 3 repetitions",
       "kind": "bars",
-      "series": [{"id": "step", "style": "solid"}],
+      "series": [
+        {
+          "id": "step",
+          "style": "solid"
+        }
+      ],
       "panels": [
         {
           "unit": "milliseconds per training step",
           "direction": "lower is better",
-          "note": ["Measured model and link only: not a recommendation for other models or networks"],
+          "note": [
+            "Measured model and link only: not a recommendation for other models or networks"
+          ],
           "groups": [
-            {"label": "", "bars": [
-              {"label": "1 MB bucket cap", "series": "step", "value": 82.2, "published": "82.2 ms", "exact": true, "n": 3, "min": 80.8, "max": 85.5, "range_published": "80.8-85.5"},
-              {"label": "5 MB bucket cap", "series": "step", "value": 62.2, "published": "62.2 ms", "exact": true, "n": 3, "min": 61.8, "max": 64.8, "range_published": "61.8-64.8"},
-              {"label": "25 MB bucket cap", "series": "step", "value": 57.4, "published": "57.4 ms", "exact": true, "n": 3, "min": 55.9, "max": 57.7, "range_published": "55.9-57.7"},
-              {"label": "100 MB bucket cap", "series": "step", "value": 54.4, "published": "54.4 ms", "exact": true, "n": 3, "min": 53.8, "max": 55.4, "range_published": "53.8-55.4"}
-            ]}
+            {
+              "label": "",
+              "bars": [
+                {
+                  "label": "1 MB bucket cap",
+                  "series": "step",
+                  "value": 82.2,
+                  "published": "82.2 ms",
+                  "exact": true,
+                  "n": 3,
+                  "min": 80.8,
+                  "max": 85.5,
+                  "range_published": "80.8-85.5",
+                  "table": {
+                    "section": "DDP training step, CUDA and MPS",
+                    "row": "1 MB",
+                    "column": "step time (median)",
+                    "range_column": "range over 3 repetitions"
+                  }
+                },
+                {
+                  "label": "5 MB bucket cap",
+                  "series": "step",
+                  "value": 62.2,
+                  "published": "62.2 ms",
+                  "exact": true,
+                  "n": 3,
+                  "min": 61.8,
+                  "max": 64.8,
+                  "range_published": "61.8-64.8",
+                  "table": {
+                    "section": "DDP training step, CUDA and MPS",
+                    "row": "5 MB",
+                    "column": "step time (median)",
+                    "range_column": "range over 3 repetitions"
+                  }
+                },
+                {
+                  "label": "25 MB bucket cap",
+                  "series": "step",
+                  "value": 57.4,
+                  "published": "57.4 ms",
+                  "exact": true,
+                  "n": 3,
+                  "min": 55.9,
+                  "max": 57.7,
+                  "range_published": "55.9-57.7",
+                  "table": {
+                    "section": "DDP training step, CUDA and MPS",
+                    "row": "25 MB",
+                    "column": "step time (median)",
+                    "range_column": "range over 3 repetitions"
+                  }
+                },
+                {
+                  "label": "100 MB bucket cap",
+                  "series": "step",
+                  "value": 54.4,
+                  "published": "54.4 ms",
+                  "exact": true,
+                  "n": 3,
+                  "min": 53.8,
+                  "max": 55.4,
+                  "range_published": "53.8-55.4",
+                  "table": {
+                    "section": "DDP training step, CUDA and MPS",
+                    "row": "100 MB",
+                    "column": "step time (median)",
+                    "range_column": "range over 3 repetitions"
+                  }
+                }
+              ]
+            }
           ]
         }
       ]
@@ -40,19 +114,55 @@
       "kind": "bars",
       "classification": "indeterminate",
       "series": [
-        {"id": "torch", "style": "solid"},
-        {"id": "native", "style": "hatch"}
+        {
+          "id": "torch",
+          "style": "solid"
+        },
+        {
+          "id": "native",
+          "style": "hatch"
+        }
       ],
       "panels": [
         {
           "unit": "microseconds to acknowledgement",
           "direction": "lower is better",
-          "note": ["Classification of this evidence: indeterminate", "An observed difference, not isolated adapter overhead"],
+          "note": [
+            "Classification of this evidence: indeterminate",
+            "An observed difference, not isolated adapter overhead"
+          ],
           "groups": [
-            {"label": "16 MiB, A to B, cpu/cpu", "bars": [
-              {"label": "torch-tbccl (PyTorch)", "series": "torch", "value": 10740, "published": "10,740 us", "exact": true, "n": 6},
-              {"label": "Native TBCCL, same scope", "series": "native", "value": 8697, "published": "8,697 us", "exact": true, "n": 6}
-            ]}
+            {
+              "label": "16 MiB, A to B, cpu/cpu",
+              "bars": [
+                {
+                  "label": "torch-tbccl (PyTorch)",
+                  "series": "torch",
+                  "value": 10740,
+                  "published": "10,740 us",
+                  "exact": true,
+                  "n": 6,
+                  "table": {
+                    "section": "Point-to-point and blocking collectives, CPU tensors",
+                    "row": "send/recv + ACK, 16 MiB, A to B",
+                    "column": "torch-tbccl"
+                  }
+                },
+                {
+                  "label": "Native TBCCL, same scope",
+                  "series": "native",
+                  "value": 8697,
+                  "published": "8,697 us",
+                  "exact": true,
+                  "n": 6,
+                  "table": {
+                    "section": "Point-to-point and blocking collectives, CPU tensors",
+                    "row": "send/recv + ACK, 16 MiB, A to B",
+                    "column": "native TBCCL, same scope"
+                  }
+                }
+              ]
+            }
           ]
         }
       ]

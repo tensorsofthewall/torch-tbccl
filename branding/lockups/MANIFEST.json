@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "generator": "branding/tools/build_lockups.py",
+  "command": "python3 branding/tools/build_lockups.py --project torch-tbccl",
+  "tools": {
+    "uharfbuzz": "0.56.3",
+    "fonttools": "4.67.0"
+  },
+  "typeface": {
+    "id": "inter-600",
+    "family": "Inter",
+    "style": "SemiBold",
+    "weight": 600,
+    "variations": null,
+    "file": "Inter-SemiBold.otf",
+    "version": "Version 3.019;git-0a5106e0b",
+    "file_sha256": "8c1990b6012254ea2b487161697d107357dd0ee55811cfd91c8c11227bbef457",
+    "license": "SIL Open Font License 1.1",
+    "copyright": "Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter)",
+    "embedded": false,
+    "note": "Text is converted to paths; no font data is embedded or distributed."
+  },
+  "mark": {
+    "source": "branding/logo/tbccl-mark.svg",
+    "sha256": "aacd87aaf5709973eb6beed41b4b43ef2413697c59d51bd17081bd9c2d3282c4",
+    "modified": false
+  },
+  "projects": {
+    "torch-tbccl": {
+      "accent": {
+        "light": "#BF341A",
+        "dark": "#FF9174"
+      }
+    }
+  },
+  "files": {
+    "torch-tbccl-compact-dark.svg": "174b1c5be42d44839f3cae69783a02e6a499fbc61c7948e6b0c4056e81fa39cf",
+    "torch-tbccl-compact-light.svg": "c496ad1e509e5b95a9a717fb45791b111ca396925177c0b28701407533ef7939",
+    "torch-tbccl-compact-mono-black.svg": "6dc3397a8127e6e6a25132622783e60b6e18c666500be09109ecf8e780bf94a1",
+    "torch-tbccl-compact-mono-white.svg": "7f1ffc982dbe299183cefe86969635cd9a87ec0552f1bd9f36ccfbcf98b3b139",
+    "torch-tbccl-horizontal-dark.svg": "d006248ecc7a243e73c8e0da6f8450fceb71fdbf98f01c26f51fa629100d72d0",
+    "torch-tbccl-horizontal-light.svg": "6d788e960256f6fa1abd29bdf9f3d07bef1357aa6f2033317dd3880672797869",
+    "torch-tbccl-horizontal-mono-black.svg": "3605a686e8b7a44260c057d49e0e79c15cba57bfb74e0f5fa949e7e41961d2e8",
+    "torch-tbccl-horizontal-mono-white.svg": "2dcabf0920538547dd2bee4ec34f2d9f2b39b64eddb57534e5113f0d0b07a817",
+    "torch-tbccl-stacked-dark.svg": "a69df1a1b5dbfdb23ec2b953f0345cbb50249f3dddf9905eb24d7183087e4d6c",
+    "torch-tbccl-stacked-light.svg": "96fbc6cde0a221d3ccdc44de537250f31d2b349465458b66c3e39b1b3b613ae2",
+    "torch-tbccl-stacked-mono-black.svg": "d3b3ceb469696886f09eada83a705dba0b4941b8587c4f37c7bed9f9d1109d79",
+    "torch-tbccl-stacked-mono-white.svg": "4e618756745992c4f890a9d8cc9b17393c792192ac6dcb46ba6201de54018259"
+  }
+}

@@ -139,6 +139,7 @@ Authoritative pages: [compatibility](reference/compatibility.md), [validated con
 torch-tbccl is one of three independent adapters over the [TBCCL](https://tbccl.tensorsofthewall.com/en/latest/) runtime; the others are vllm-tbccl (vLLM) and exo-tbccl (exo). It does not depend on them and they do not depend on it. See the [ecosystem overview](project/ecosystem.md).
 
 ```{toctree}
+:hidden:
 :maxdepth: 2
 :caption: Getting started
 
@@ -148,6 +149,7 @@ getting-started/quickstart
 ```
 
 ```{toctree}
+:hidden:
 :maxdepth: 2
 :caption: User guide
 
@@ -158,6 +160,7 @@ reference/configuration
 ```
 
 ```{toctree}
+:hidden:
 :maxdepth: 2
 :caption: Benchmarks
 
@@ -165,6 +168,7 @@ benchmarks/index
 ```
 
 ```{toctree}
+:hidden:
 :maxdepth: 2
 :caption: Architecture
 
@@ -173,6 +177,7 @@ adr/index
 ```
 
 ```{toctree}
+:hidden:
 :maxdepth: 2
 :caption: Reference
 
@@ -180,6 +185,7 @@ reference/index
 ```
 
 ```{toctree}
+:hidden:
 :maxdepth: 2
 :caption: Troubleshooting
 
@@ -188,6 +194,7 @@ guides/verify-active
 ```
 
 ```{toctree}
+:hidden:
 :maxdepth: 2
 :caption: Development
 
@@ -195,6 +202,7 @@ development/index
 ```
 
 ```{toctree}
+:hidden:
 :maxdepth: 2
 :caption: Project
 

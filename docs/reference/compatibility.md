@@ -6,7 +6,7 @@
 | PyTorch | 2.13.x (`torch>=2.13,<2.14`), validated with 2.13.0; the extension is tied to the minor series it was built with |
 | CPython | 3.13 only (`>=3.13,<3.14`) |
 | TBCCL C ABI | 1 (`SUPPORTED_C_ABI`) |
-| TBCCL wire protocol | 4 (`TESTED_WIRE_PROTOCOL`); a build against another wire version warns at import |
+| TBCCL wire protocol | 4 (`TESTED_WIRE_PROTOCOL`); a build against another wire protocol version warns at import |
 | Platforms | Linux x86-64 (CPU, CUDA 13), macOS arm64 (CPU, MPS) |
 
 ## Wheels

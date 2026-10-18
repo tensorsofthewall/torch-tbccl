@@ -93,13 +93,17 @@ Hosted documentation: https://torch-tbccl.tensorsofthewall.com/ (`stable` is the
 
 Questions, feedback and what to include in a report: [getting help](https://tbccl.tensorsofthewall.com/en/latest/project/getting-help.html). The projects collect [no telemetry](https://tbccl.tensorsofthewall.com/en/latest/project/privacy.html).
 
+## Benchmarks
+
+Run the PyTorch communication and DDP benchmarks on your own hardware, standalone or through the TBCCL benchmark runner: [benchmarks](docs/benchmarks/index.md). Reference measurements from one machine pair, with their limits, are in the [results](docs/benchmarks/results.md); [methodology](docs/benchmarks/methodology.md) says what each number means.
+
 ## Limitations
 
 Reductions are `SUM` only; float16/bfloat16 reductions only at world size 2; `gather` only for two-rank groups; no `reduce`, `scatter`, `reduce_scatter`, `all_to_all`; no FSDP validation; no recovery after an abort; one submitting thread per MPS rank. See [known limitations](docs/project/limitations.md).
 
 ## Development
 
-[MAINTENANCE.md](MAINTENANCE.md) records the maintenance policy and what needs physical requalification. `CONTRIBUTING.md` explains the workflow and `AGENTS.md` the rules for the code base; the [development documentation](docs/development/index.md) covers building, testing and where a change belongs. Security: `SECURITY.md`. Changes for users: `CHANGELOG.md`. Releasing: `RELEASE.md`.
+[MAINTENANCE.md](MAINTENANCE.md) records the maintenance policy and what needs physical requalification. `CONTRIBUTING.md` explains the workflow and `AGENTS.md` the rules for the code base; the [development documentation](docs/development/index.md) covers building, testing and where a change belongs. The [code map](docs/development/code-map.md) points to the first files for each topic, and [testing](docs/development/testing.md) says which checks need a GPU, a Mac or a Thunderbolt link (most do not). Security: `SECURITY.md`. Changes for users: `CHANGELOG.md`. Releasing: `RELEASE.md`.
 
 ## License
 

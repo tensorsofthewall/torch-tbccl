@@ -116,6 +116,13 @@ TBCCL_LOCAL_ENDPOINT=127.0.0.1:0 .venv/bin/torchrun --standalone --nproc-per-nod
 
 See the [DDP guide](../guides/ddp.md). To confirm a job really uses TBCCL see [how do I know TBCCL is being used?](../guides/verify-active.md).
 
+## What success looks like
+
+- **One machine:** each of the two ranks prints `tbccl` as its backend and `tensor([3.])`.
+- **Two hosts:** `rank N: backend=tbccl result=3.0 PASS` on both machines and exit status 0; the Thunderbolt interface counters grew by megabytes.
+
+**What this showed:** the `tbccl` backend registered, the ranks found each other, and a `SUM` `all_reduce` ran through the TBCCL process group (on the machines and tensors you used). **What it did not show:** DDP training, device tensors (unless you ran step 6), performance, groups of more than two ranks, or recovery after a failure. **Read next:** [how do I know TBCCL is being used?](../guides/verify-active.md), the [DDP guide](../guides/ddp.md), the [MPS guide](../guides/mps.md), the [supported operations](../reference/supported-operations.md). **If it fails:** [troubleshooting](../guides/troubleshooting.md), starting at "Start here".
+
 ## Next steps
 
 Once the two-host all-reduce passes on CPU tensors, the same link can carry the other integrations; each has its own prerequisites and none is needed for the all-reduce:

@@ -2,6 +2,17 @@
 
 torch-tbccl is distributed as a platform wheel that contains its own statically linked TBCCL runtime. Install the matching PyTorch first, then the wheel. You do not build or install TBCCL yourself to use the wheel; [building from source](#build-from-source) is for developers.
 
+## Which commands do I run?
+
+| Your machine | Use | Do not |
+|---|---|---|
+| Linux x86-64, with or without a GPU | the **Linux** commands: Python 3.13, `torch==2.13.0` from the CUDA 13 index (`--torch-backend cu130`), then the `manylinux` wheel | install a CPU-only PyTorch: the extension needs `libtorch_cuda.so` to import, even with no GPU |
+| Apple-silicon Mac | the **macOS** commands: Python 3.13, `torch==2.13.0` from PyPI, then the `macosx_14_0_arm64` wheel | use an Intel Mac or an older macOS |
+| two machines (Linux and Mac) | each machine's own commands, **the same torch-tbccl version on both** | mix wheel versions: ranks with different wire protocols cannot connect |
+| any other platform or PyTorch | [build from source](#build-from-source) (a developer path, not validated by the release) | |
+
+The wheel already contains TBCCL. You never install a TBCCL release archive to use it.
+
 ## Requirements
 
 | | Linux x86-64 | macOS arm64 (Apple silicon) |
@@ -84,6 +95,8 @@ registered         True
 ```
 
 `registered True` means `"tbccl"` is a known `torch.distributed` backend in this process. Every machine of a job must report the same wire protocol.
+
+**Next:** the [quickstart](quickstart.md) runs a two-rank `all_reduce` on this machine in about a minute; it needs nothing else and is all you need to confirm the backend works. DDP and MPS are separate guides ([DDP](../guides/ddp.md), [MPS](../guides/mps.md)).
 
 ## Build from source
 

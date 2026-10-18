@@ -37,3 +37,7 @@ DDP needs `allgather`, `broadcast` and `allreduce`; all three share one ordered 
 ## Not provided
 
 Reductions other than `SUM`, `reduce`, `scatter`, `reduce_scatter`, `all_gather_into_tensor`, `all_to_all`, FSDP, and recovery after an abort. See the [supported operations](../reference/supported-operations.md).
+
+## Where this sits
+
+The runtime below this adapter is described in TBCCL's [architecture](https://tbccl.tensorsofthewall.com/en/latest/concepts/architecture.html) and [transports](https://tbccl.tensorsofthewall.com/en/latest/concepts/transports.html) pages: this adapter adds no transport, algorithm or protocol of its own.

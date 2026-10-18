@@ -16,7 +16,7 @@ TBCCL_ROOT=<installed tbccl prefix> uv pip install --python .venv/bin/python --n
 
 Set `TBCCL_ROOT` on every build and read the build output (a failed rebuild leaves the old extension in place). Do not use `uv pip install --reinstall`, which rewrites torch. Several ranks on one machine need `OMP_NUM_THREADS` set.
 
-Run the full pytest suite for any change. Multi-rank tests run on loopback. GPU, MPS and Thunderbolt runs are opt-in harnesses; say in the pull request what you ran. Validate packaging changes with a built wheel in a clean environment, not an editable install.
+Run the full pytest suite for any change. Multi-rank tests run on loopback. GPU, MPS and Thunderbolt runs are opt-in harnesses; say in the pull request what you ran. `docs/development/testing.md` ("What needs what") lists which checks need which hardware, and `docs/development/code-map.md` points to the first files for each topic. Validate packaging changes with a built wheel in a clean environment, not an editable install.
 
 ## Contribution workflow
 

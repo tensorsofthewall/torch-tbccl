@@ -2,6 +2,59 @@
 
 Find the symptom, check the likely cause with the diagnostic, apply the fix. Start with `python -m torch_tbccl.info` on every machine ([how do I know TBCCL is being used?](verify-active.md)).
 
+## Start here
+
+### Work through it in this order
+
+Each step is marked **Observe** (it reads state; nothing starts, stops or changes) or **Action** (you start, stop or configure a process, or run a test). No step changes network, firewall, driver or hardware settings. Stop at the first step that fails: later steps depend on it.
+
+```{table}
+:class: tb-stack tb-stack-steps
+
+| Step | Question | Check | If it fails |
+|---|---|---|---|
+| 1 | Which versions are installed? | **Observe:** `.venv/bin/python -m torch_tbccl.info` on **every** machine (same wire protocol, `registered True`) | [Installing and importing](#installing-and-importing) |
+| 2 | Is the device you need available? | **Observe:** `.venv/bin/python -c "import torch; print(torch.__version__, torch.cuda.is_available(), torch.backends.mps.is_available())"` | [Installing and importing](#installing-and-importing); [MPS](mps.md) |
+| 3 | Is the link ready? | **Observe:** `python3 thunderbolt_link_doctor.py --peer <peer-link-address>` (with `--peer` it also sends a ping and opens one TCP connection to the peer, and changes nothing; [how to get it](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html)) | [Thunderbolt link troubleshooting](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html) |
+| 4 | Did `torchrun` find every rank? | **Observe:** the `torchrun` output (observe). **Action:** the one-line TCP connect test to rank 0's `--master-port` ([below](#ping-works-but-the-ranks-time-out)) | [ping works but the ranks time out](#ping-works-but-the-ranks-time-out) |
+| 5 | Did the TBCCL transport come up? | **Observe:** `TBCCL_LOCAL_ENDPOINT` set on every rank; `init_process_group` returns | [Process-group creation](#process-group-creation) |
+| 6 | Does the collective run? | **Action:** run a one-element `all_reduce`, and start the ranks with `TORCH_TBCCL_TRACE=1` ([verify](verify-active.md)) | [Operations](#operations) |
+| 7 | Did a failure leave something behind? | **Observe:** `lsof -iTCP:<master port> -sTCP:LISTEN` on the rank-0 machine | [Failure and lifecycle](#failure-and-lifecycle) |
+| 8 | Is it only slow? | **Observe:** the [benchmark methodology](../benchmarks/methodology.md) | [Results](../benchmarks/results.md) |
+```
+
+### Find your symptom
+
+```{table}
+:class: tb-stack tb-stack-find
+
+| You see | Go to |
+|---|---|
+| `ImportError` on `import torch_tbccl`, or no matching wheel | [Installing and importing](#installing-and-importing) |
+| the backend is not registered or `"tbccl"` is unknown | `python -m torch_tbccl.info` must print `registered True`; [verify](verify-active.md) |
+| `TBCCL_LOCAL_ENDPOINT is not set` | [Process-group creation](#process-group-creation) |
+| `protocol_mismatch ... wire protocol` | [Process-group creation](#process-group-creation); install the same wheel everywhere |
+| `torchrun` prints nothing for minutes, or `timeout` at `init_process_group` | [Ping works but the ranks time out](#ping-works-but-the-ranks-time-out) |
+| `NotImplementedError: torch-tbccl: unsupported operation` | [Operations](#operations) |
+| an MPS assertion or crash | [Operations](#operations), [MPS](mps.md) |
+| processes do not exit after a failure | [Failure and lifecycle](#failure-and-lifecycle) |
+```
+
+### Which layer owns the error
+
+```{table}
+:class: tb-stack tb-stack-owner
+
+| Layer | What it looks like | What to do |
+|---|---|---|
+| torch-tbccl (this adapter) | a message that starts with `torch-tbccl:` | this guide; report with `python -m torch_tbccl.info` |
+| Native TBCCL | a result tag inside the message (`protocol_mismatch`, `timeout`); the adapter surfaces TBCCL errors | [TBCCL troubleshooting](https://tbccl.tensorsofthewall.com/en/latest/guides/troubleshooting.html) |
+| PyTorch | `torchrun` rendezvous waits, c10d store errors, `torch.mps.synchronize()` threading, which CUDA build of PyTorch you installed | PyTorch's own documentation; this guide names the known cases |
+| Operating system | a macOS Local Network or firewall prompt, a port in use | [link troubleshooting entries 9 and 10](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html) |
+| Network configuration | wrong subnet, traffic leaving by Wi-Fi, mismatched MTU | [link troubleshooting](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html) |
+| External dependencies | the PyTorch wheel index, `uv`, the CUDA runtime that PyTorch brings | their own notes; `python -m torch_tbccl.info` shows what is loaded |
+```
+
 ## Installing and importing
 
 | Symptom | Likely cause | Diagnostic | Fix |
@@ -36,6 +89,29 @@ Find the symptom, check the likely cause with the diagnostic, apply the fix. Sta
 | float16/bfloat16 `all_reduce` rejected | those reductions work at world size 2 only | | use float32 or run two ranks |
 | MPS: a Metal assertion or a crash with several threads | `torch.mps.synchronize()` is not safe from two threads | | submit operations on MPS tensors from one thread; use CPU tensors for side traffic ([MPS](mps.md)) |
 
+## Ping works but the ranks time out
+
+**Symptom.** `ping` answers both ways, yet `torchrun` waits with no progress, or `init_process_group` raises `timeout`.
+
+**Two different waits.** `torchrun` first needs every node to reach rank 0's rendezvous port (`--master-port`, PyTorch's own store). Only after that does TBCCL connect the ranks' own ports (`TBCCL_LOCAL_ENDPOINT`). A hang before any `torch-tbccl:` message is the first; `timeout` raised by `init_process_group` is usually the second.
+
+**Checks.** The route and environment commands are observations. The connection test is an **action**: it opens one TCP connection and closes it at once, which the listening side may log as a failed handshake, so run it only when no job you care about is starting. The link doctor's listener on a spare port (`--listen` / `--tcp-port`) tests the same path without touching a running job. Run them while the listening side is waiting.
+
+```sh
+# ACTION (opens and closes one TCP connection) - From the other machine: can it open a TCP connection to rank 0's rendezvous port?
+python3 -c "import socket; socket.create_connection(('<rank-0-link-address>', <master-port>), timeout=3).close(); print('TCP connect ok')"
+# observe - Does traffic to rank 0 leave by the link you intend?
+ip route get <rank-0-link-address>          # Linux
+route -n get <rank-0-link-address>          # macOS
+echo $TBCCL_LOCAL_ENDPOINT                  # on every rank: this machine's link address, not a hostname or 127.0.0.1
+```
+
+- `TCP connect ok` on the rendezvous port but a `timeout` later: the TBCCL ports are the problem. The `:0` port is chosen at start, so test with the doctor's TCP mode ([link troubleshooting](https://tbccl.tensorsofthewall.com/en/latest/guides/thunderbolt-troubleshooting.html), entry 8) and check `TBCCL_LOCAL_ENDPOINT` on every rank.
+- `timed out`: a firewall, a wrong address, or a route through another interface. The second command shows which interface is used.
+- `Connection refused`: rank 0 is not running, or listens on another address.
+
+On macOS check the Local Network prompt and that the rank runs in a live session. **Do not** change firewall rules, MTU or interface settings as a first step.
+
 ## Failure and lifecycle
 
 Expectations are explicit: **there is no recovery.** After a failure the process group is not usable and must be destroyed and recreated.
@@ -48,3 +124,7 @@ Expectations are explicit: **there is no recovery.** After a failure the process
 - **Mixed-version ranks** cannot connect: `protocol_mismatch ... wire protocol` is raised at bootstrap, not later.
 
 Peer-failure behavior is validated on loopback; do not kill a physical peer to test it.
+
+## When to ask for help
+
+Escalate when the checks isolate the layer and it is torch-tbccl or TBCCL, or when you cannot isolate it. Include `python -m torch_tbccl.info` from every machine, the exact error, `python tools/collect_diagnostics.py` output (versions and interface names only; nothing is uploaded), and the commands you ran. See [getting help](https://tbccl.tensorsofthewall.com/en/latest/project/getting-help.html). Security problems follow the [security policy](../project/security-policy.md).

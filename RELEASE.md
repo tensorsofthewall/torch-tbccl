@@ -13,6 +13,18 @@ First decide what kind of change this is: the table in [the maintenance policy](
 5. Physical qualification: the physical Linux/Mac runs of `tools/physical_ops.py` and `tools/hetero_ops.py` over the Thunderbolt link, run from the public wheels (a change to the adapter runtime or to the supported TBCCL line needs them). Record the commands, the commit and the artifact checksums in the validation page.
 6. Run the secret scan (gitleaks, pinned version) over the working tree and the history; check the security policy, license and third-party documentation.
 
+### Release documentation
+
+Before the tag exists, the release text is checked against the intended version. A version bump that leaves the README, the homepage or the installation commands describing the previous release must not pass.
+
+a. Run `python3 tools/check_release_docs.py --tbccl-root <TBCCL checkout> --tag vX.Y.Z`. It derives the version from the source and `compatibility.json` (not from the live ecosystem manifest, which is only updated after publishing) and checks the README status line, the documentation homepage, the download and tag URLs, every artifact name against `release_assets`, and the expected output of the version commands. The `release-preflight` workflow runs it too. The bundled TBCCL version (`versions.bundled_tbccl` in `tools/release_docs.json`) must be the TBCCL the wheel is built against; `--tbccl-root` cross-checks it.
+b. Read the installation commands of the README and the installation page once as a user would: current-version URLs, artifact names that exist in `release_assets`, and the version that the verification command should print.
+c. Check that benchmark tools are described as what they are: the benchmark runner and the framework providers are part of the source of a release, not of the binary archives or wheels.
+d. Review the release statements of the homepage and the README by eye. The checker confirms version numbers, not meaning.
+e. Confirm that historical references stay as measured: benchmark and validation records, changelog sections and warnings about superseded releases keep the versions they describe. If a scanned page must name an older version, declare it under `allow` in `tools/release_docs.json` with the reason.
+f. Updating the live ecosystem manifest after publishing (the follow-up change) does not replace this check; it runs before the tag.
+g. A change that touches only documentation or release tooling needs no physical requalification of the runtime or of performance; the manual physical-qualification policy in step 5 is unchanged and applies to runtime, transport and collective changes.
+
 ## Build, inspect and preflight
 
 7. Run the `release-artifacts` workflow on the release commit, passing the intended tag as `release_tag` where the workflow has that input. The guard job refuses to build when the tag, the package version, the manifest, the framework pin or the TBCCL line disagree. Only this workflow builds artifacts.

@@ -55,6 +55,7 @@ hosts:
 
 Then:
 
+<!-- doccheck: skip (runs from a TBCCL checkout; the runner is not in this repository) -->
 ```sh
 python3 -m benchmarks.suite providers my-config.yaml          # lists torch-tbccl with its version and state, per host
 python3 -m benchmarks.suite run my-config.yaml --dry-run      # prints the commands; launches nothing

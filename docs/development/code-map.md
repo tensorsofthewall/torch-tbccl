@@ -2,6 +2,9 @@
 
 Where to start reading, by topic. It is a map to the directories and the first files, not a walk through the source; the rules for the code base are in `AGENTS.md` and the design is in the [architecture](../concepts/architecture.md) page. Every path below is checked by a test, so a rename that leaves this page stale fails the documentation checks.
 
+```{table}
+:class: tb-stack tb-stack-map
+
 | Topic | Start at | Read with |
 |---|---|---|
 | Backend registration (what `import torch_tbccl` does) | `torch_tbccl/__init__.py`, `csrc/bindings.cpp` | [Verify the backend](../guides/verify-active.md) |
@@ -14,5 +17,6 @@ Where to start reading, by topic. It is a map to the directories and the first f
 | The supported surface as a tested contract | `tests/test_capability_matrix.py`, `tools/capability_matrix.py` | [Supported operations](../reference/supported-operations.md) |
 | Tracing and diagnostics | `csrc/trace.cpp`, `torch_tbccl/info.py`, `tools/collect_diagnostics.py` | [Verify the backend](../guides/verify-active.md) |
 | Packaging and release checks | `tools/package_inspect.py`, `tools/build_release_wheel.sh`, `setup.py` | [Testing](testing.md) |
+```
 
 The runtime itself (transport, algorithms, protocol, the C ABI) is not in this repository; its [code map](https://tbccl.tensorsofthewall.com/en/latest/development/code-map.html) lives in TBCCL. An adapter change that needs one of those belongs there ([where should this change go?](where-should-this-change-go.md)).

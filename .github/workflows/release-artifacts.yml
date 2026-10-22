@@ -110,7 +110,9 @@ jobs:
             mkdir /r && cd /repo && tar --exclude=./torch_tbccl --exclude=./csrc --exclude=./.git -cf - . | tar -xf - -C /r && cd /r
             python -c "import torch_tbccl; print(\"imported from\", torch_tbccl.__file__)"
             mkdir /empty && cd /empty && python /r/tools/clean_install_check.py --device cpu
-            cd /r && OMP_NUM_THREADS=2 pytest -q -p no:cacheprovider tests --ignore=tests/test_clean_install.py'
+            # test_code_map_paths_exist checks the paths named in docs/development/code-map.md against the source tree (csrc/, torch_tbccl/), which this copy
+            # deliberately lacks. It runs against the full checkout in the docs workflow; everything else runs here against the installed wheel.
+            cd /r && OMP_NUM_THREADS=2 pytest -q -p no:cacheprovider -k "not test_code_map_paths_exist" tests --ignore=tests/test_clean_install.py'
 
   macos-wheel:
     name: macOS arm64 wheel (PyTorch 2.13.0, deployment target 14.0)
@@ -158,7 +160,8 @@ jobs:
           python -c "import torch_tbccl; print('imported from', torch_tbccl.__file__)"
           mkdir /tmp/empty && cd /tmp/empty && python /tmp/r/tools/clean_install_check.py --device cpu
           # hosted macOS runners expose a paravirtualized GPU on which MPS cannot allocate; the MPS tests run on the physical Mac
-          cd /tmp/r && OMP_NUM_THREADS=2 pytest -q -p no:cacheprovider -m 'not mps' tests --ignore=tests/test_clean_install.py
+          # test_code_map_paths_exist needs the source tree, which this copy lacks; it runs against the full checkout in the docs workflow
+          cd /tmp/r && OMP_NUM_THREADS=2 pytest -q -p no:cacheprovider -m 'not mps' -k 'not test_code_map_paths_exist' tests --ignore=tests/test_clean_install.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: wheel-macos-arm64

@@ -2,6 +2,32 @@
 
 All notable user-facing changes are recorded here. The format follows Keep a Changelog, and the project follows Semantic Versioning once it has releases. 0.2.0 is the first release; it is experimental.
 
+## 0.3.0rc1
+
+Release candidate (pre-release). First release candidate of 0.3.0, the first minor release after 0.2. There is no change to the backend source (`csrc/`, `torch_tbccl/`), the `ProcessGroup` behaviour, PyTorch support (2.13.x, CPython 3.13), the TBCCL C ABI (1) or the wire protocol (4). Release candidates are for validation on real hardware; expect an rc2 if a blocker is found.
+
+### Installation
+
+- Two CI-built wheels, named `torch_tbccl-0.3.0rc1-...`, attached to the GitHub pre-release with an SPDX SBOM, `SHA256SUMS` and a build-provenance attestation. They are not published on PyPI or TestPyPI.
+- The wheels are built against TBCCL 0.7.0rc1 and statically link it. A 0.2.x wheel keeps the TBCCL it was built with; to use the changes below, install a 0.3.x wheel.
+
+### Changed
+
+- **Two-rank `all_gather` is faster by default.** The bundled TBCCL 0.7.0 runs both directions of a two-rank AllGather at once. The adapter needs no setting. Measured on a direct Thunderbolt 4 link between a Linux/NVIDIA host and an Apple-silicon Mac, completed latency fell by roughly 25% to 66% in the sampled sizes.
+
+### Added
+
+- **Opt-in AllReduce pipeline for DDP.** `TBCCL_ALLREDUCE_PIPELINE_BYTES=131072` on both ranks, set before `init_process_group`, pipelines two-rank all-reduce in chunks. In a DistributedDataParallel step with 25 MB buckets over Thunderbolt 4 the step time fell by roughly a third to a half; with the setting unset the step time matched the published 0.2.1 wheel within about 1%. The setting is not negotiated, so set it on both ranks; see the DDP guide for when not to enable it.
+- Documentation of the setting in the DDP guide and the configuration reference.
+
+### Compatibility
+
+- PyTorch 2.13.x, CPython 3.13, TBCCL C ABI 1, wire protocol 4, TBCCL 0.6.0 or newer as a build-time minimum. Platforms unchanged.
+
+### Known limitations
+
+- The measurements above come from one Linux CUDA / Apple Metal machine pair. PCIe AER reporting was unavailable on the Linux host, so no statement about AER errors is made.
+
 ## 0.2.1
 
 Patch release. It adds the public PyTorch benchmark provider and its documentation. There is no change to the backend, the `ProcessGroup` behaviour, PyTorch support (2.13.x, CPython 3.13), the TBCCL C ABI (1) or the wire protocol (4), and nothing in this release is a performance improvement. The wheels are built against TBCCL 0.6.1 (a patch release of 0.6.0 without runtime change); the minimum TBCCL package stays 0.6.0.

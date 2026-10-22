@@ -73,7 +73,7 @@ TBCCL_LOCAL_ENDPOINT=192.168.77.2:0 .venv/bin/torchrun --nnodes 2 --nproc-per-no
 Expected output (each machine prints its own rank's lines; the hostname and versions differ):
 
 ```text
-rank 0: host=<hostname> world=2 backend=tbccl torch_tbccl=0.2.1 tbccl_runtime=0.6.1
+rank 0: host=<hostname> world=2 backend=tbccl torch_tbccl=0.3.0rc1 tbccl_runtime=0.7.0rc1
 rank 0: backend=tbccl result=3.0 PASS
 ```
 

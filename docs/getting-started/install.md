@@ -34,7 +34,7 @@ The commands below use [uv](https://docs.astral.sh/uv/) to create the environmen
 
 ## Install the wheel
 
-The 0.3.0rc1 wheels are attached to the GitHub release [`v0.3.0rc1`](https://github.com/tensorsofthewall/torch-tbccl/releases/tag/v0.3.0rc1). They are not published on PyPI or TestPyPI. Verify the download against `SHA256SUMS` from the same release if you like.
+The 0.3.0 wheels are attached to the GitHub release [`v0.3.0`](https://github.com/tensorsofthewall/torch-tbccl/releases/tag/v0.3.0). They are not published on PyPI or TestPyPI. Verify the download against `SHA256SUMS` from the same release if you like.
 
 Every command names the environment (`.venv/bin/python`), so nothing needs to be activated, and several environments can coexist on one machine without ambiguity.
 
@@ -43,7 +43,7 @@ Every command names the environment (`.venv/bin/python`), so nothing needs to be
 ```sh
 uv venv --python 3.13 .venv
 uv pip install --python .venv/bin/python "torch==2.13.0" --torch-backend cu130
-uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.3.0rc1/torch_tbccl-0.3.0rc1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.3.0/torch_tbccl-0.3.0-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
 ```
 
 `--torch-backend cu130` makes `uv pip` take PyTorch from the CUDA 13 index (it resolves `torch==2.13.0+cu130`). It is a preview feature of uv; if your uv rejects it, use the explicit index, which is equivalent:
@@ -57,7 +57,7 @@ uv pip install --python .venv/bin/python "torch==2.13.0" --index-url https://dow
 ```sh
 uv venv --python 3.13 .venv
 uv pip install --python .venv/bin/python "torch==2.13.0"
-uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.3.0rc1/torch_tbccl-0.3.0rc1-cp313-cp313-macosx_14_0_arm64.whl
+uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.3.0/torch_tbccl-0.3.0-cp313-cp313-macosx_14_0_arm64.whl
 ```
 
 `--no-deps` keeps the package manager from replacing the PyTorch you just chose, so install PyTorch first. Plain `pip` works the same way (`.venv/bin/python -m pip install --no-deps <wheel URL>`). Never use `--reinstall` on an environment that holds torch: it rewrites torch.
@@ -67,7 +67,7 @@ uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsoft
 `SHA256SUMS` in the release lists the checksum of each wheel. To check a wheel before installing it, download both files into one directory and compare:
 
 ```sh
-curl -fsSLO https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.3.0rc1/SHA256SUMS
+curl -fsSLO https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.3.0/SHA256SUMS
 curl -fsSLO <the wheel URL for your machine from above>
 sha256sum -c --ignore-missing SHA256SUMS      # Linux; on macOS: shasum -a 256 -c --ignore-missing SHA256SUMS
 uv pip install --python .venv/bin/python --no-deps ./<the wheel file name>
@@ -84,9 +84,9 @@ uv pip install --python .venv/bin/python --no-deps ./<the wheel file name>
 prints the package, torch, libtbccl, C ABI and wire protocol versions and the devices this build supports, for example:
 
 ```text
-torch_tbccl        0.3.0rc1
+torch_tbccl        0.3.0
 torch_running      2.13.0+cu130
-libtbccl           0.7.0rc1
+libtbccl           0.7.0
 c_abi              1
 wire_protocol      4
 devices            ['cpu', 'cuda']

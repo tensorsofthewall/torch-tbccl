@@ -2,14 +2,14 @@
 
 All notable user-facing changes are recorded here. The format follows Keep a Changelog, and the project follows Semantic Versioning once it has releases. 0.2.0 is the first release; it is experimental.
 
-## 0.3.0rc1
+## 0.3.0
 
-Release candidate (pre-release). First release candidate of 0.3.0, the first minor release after 0.2. There is no change to the backend source (`csrc/`, `torch_tbccl/`), the `ProcessGroup` behaviour, PyTorch support (2.13.x, CPython 3.13), the TBCCL C ABI (1) or the wire protocol (4). Release candidates are for validation on real hardware; expect an rc2 if a blocker is found.
+The first minor release after 0.2, promoted from release candidate 0.3.0rc1 with no code change. There is no change to the backend source (`csrc/`, `torch_tbccl/`), the `ProcessGroup` behaviour, PyTorch support (2.13.x, CPython 3.13), the TBCCL C ABI (1) or the wire protocol (4).
 
 ### Installation
 
-- Two CI-built wheels, named `torch_tbccl-0.3.0rc1-...`, attached to the GitHub pre-release with an SPDX SBOM, `SHA256SUMS` and a build-provenance attestation. They are not published on PyPI or TestPyPI.
-- The wheels are built against TBCCL 0.7.0rc1 and statically link it. A 0.2.x wheel keeps the TBCCL it was built with; to use the changes below, install a 0.3.x wheel.
+- Two CI-built wheels, named `torch_tbccl-0.3.0-...`, attached to the GitHub release with an SPDX SBOM, `SHA256SUMS` and a build-provenance attestation. They are not published on PyPI or TestPyPI.
+- The wheels are built against TBCCL 0.7.0 and statically link it. A 0.2.x wheel keeps the TBCCL it was built with; to use the changes below, install a 0.3.x wheel.
 
 ### Changed
 

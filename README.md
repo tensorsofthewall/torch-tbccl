@@ -9,7 +9,7 @@
 
 torch-tbccl is a PyTorch `torch.distributed` backend named `"tbccl"` that lets PyTorch programs communicate between heterogeneous machines, for example a Linux host with an NVIDIA GPU and a Mac, over TCP, including a direct Thunderbolt 4 link. PyTorch itself is not modified: you `import torch_tbccl` and use the normal `torch.distributed` API.
 
-> **Status:** **0.2.1** (patch release of 0.2.0: adds the public PyTorch benchmark provider; experimental). Validated tuple: **PyTorch 2.13.x**, **CPython 3.13**, TBCCL **C ABI 1 / wire protocol 4**, on Linux x86-64 (CPU and CUDA 13) and macOS arm64 (CPU and MPS). Anything else is untested.
+> **Status:** **0.3.0rc1** (release candidate of 0.3.0; pre-release, not for production use; experimental). Validated tuple: **PyTorch 2.13.x**, **CPython 3.13**, TBCCL **C ABI 1 / wire protocol 4**, on Linux x86-64 (CPU and CUDA 13) and macOS arm64 (CPU and MPS). Anything else is untested.
 
 It is one of three independent adapters over the [TBCCL](https://github.com/tensorsofthewall/tbccl) runtime (the others are [vllm-tbccl](https://github.com/tensorsofthewall/vllm-tbccl) and [exo-tbccl](https://github.com/tensorsofthewall/exo-tbccl)). It is an adapter only: transport, collectives and staging live in TBCCL. It does not aim for NCCL feature parity. You do not need to install TBCCL first: the wheel contains it.
 
@@ -40,7 +40,7 @@ Prebuilt wheels: no compiler, no TBCCL install. Commands name the environment ex
 ```sh
 uv venv --python 3.13 .venv
 uv pip install --python .venv/bin/python "torch==2.13.0" --torch-backend cu130
-uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.2.1/torch_tbccl-0.2.1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
+uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.3.0rc1/torch_tbccl-0.3.0rc1-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl
 ```
 
 **macOS arm64** (Apple silicon, macOS 14 or newer):
@@ -48,7 +48,7 @@ uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsoft
 ```sh
 uv venv --python 3.13 .venv
 uv pip install --python .venv/bin/python "torch==2.13.0"
-uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.2.1/torch_tbccl-0.2.1-cp313-cp313-macosx_14_0_arm64.whl
+uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsofthewall/torch-tbccl/releases/download/v0.3.0rc1/torch_tbccl-0.3.0rc1-cp313-cp313-macosx_14_0_arm64.whl
 ```
 
 `--no-deps` keeps the installer from replacing the PyTorch you just installed. `--torch-backend` is a preview feature of `uv pip`; if your uv lacks it, [installing](docs/getting-started/install.md) shows the equivalent explicit PyTorch index. Install the same version on every machine of a job. Details, other platforms, troubleshooting and building from source (developers only): [installing](docs/getting-started/install.md).
@@ -61,7 +61,7 @@ uv pip install --python .venv/bin/python --no-deps https://github.com/tensorsoft
 .venv/bin/python -m torch_tbccl.info
 ```
 
-It prints the package, torch, libtbccl, C ABI and wire protocol versions and the supported devices (`torch_tbccl 0.2.1`, `torch_running 2.13.0+cu130` on Linux, `libtbccl 0.6.1`, `c_abi 1`, `wire_protocol 4`).
+It prints the package, torch, libtbccl, C ABI and wire protocol versions and the supported devices (`torch_tbccl 0.3.0rc1`, `torch_running 2.13.0+cu130` on Linux, `libtbccl 0.7.0rc1`, `c_abi 1`, `wire_protocol 4`).
 
 ## Minimal example
 

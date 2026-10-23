@@ -30,7 +30,7 @@ The compiled extension is tied to the torch minor series it was built with: `imp
 
 ## Before you start: uv and Python
 
-The commands below use [uv](https://docs.astral.sh/uv/) to create the environment. If `uv --version` fails, install it (macOS and Linux): `curl -LsSf https://astral.sh/uv/install.sh | sh`, then open a new terminal. You do not need to install Python 3.13 yourself: `uv venv --python 3.13` downloads a suitable interpreter if the machine has none. Run the commands in the directory where you want the environment (`.venv` is created there); use the same layout on both machines of a two-machine job.
+The commands below use [uv](https://docs.astral.sh/uv/) to create the environment. If `uv --version` fails, install it (macOS and Linux): `curl -LsSf https://astral.sh/uv/install.sh | sh`, then open a new terminal. Use uv 0.13.4 or later, pip 26.2.2 or later and certifi 2026.10.19 or later (the October 2026 emSign CA removal; see the [security policy](https://tbccl.tensorsofthewall.com/en/latest/project/security-policy.html)). The wheel contains no CA bundle. You do not need to install Python 3.13 yourself: `uv venv --python 3.13` downloads a suitable interpreter if the machine has none. Run the commands in the directory where you want the environment (`.venv` is created there); use the same layout on both machines of a two-machine job.
 
 ## Install the wheel
 

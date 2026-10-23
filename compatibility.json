@@ -6,10 +6,10 @@
     "torch_tbccl-{version}-cp313-cp313-macosx_14_0_arm64.whl"
   ],
   "package": {
-    "development_version": "0.3.0",
+    "development_version": "0.3.1",
     "release_candidate": false,
-    "target_release": "0.3.0",
-    "released": true
+    "target_release": "0.3.1",
+    "released": false
   },
   "python": {"requires": ">=3.13,<3.14"},
   "frameworks": {

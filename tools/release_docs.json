@@ -15,7 +15,7 @@
   ],
   "exclude_reason": "Validation reports, decision records, the changelog page and the benchmark results page record what was true or measured for an earlier version and must keep those versions. They are not scanned for release URLs or artifact names.",
   "versions": {
-    "bundled_tbccl": "0.7.0"
+    "bundled_tbccl": "0.7.1"
   },
   "statements": [
     {

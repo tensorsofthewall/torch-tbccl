@@ -9,7 +9,7 @@ torch-tbccl is a PyTorch `torch.distributed` backend named `"tbccl"`. It lets on
 :::
 
 ```{note}
-**Release.** The current release is 0.3.0 (PyTorch 2.13.x, CPython 3.13, TBCCL C ABI 1 / wire protocol 4), whose wheels bundle TBCCL 0.7.0. It is experimental.
+**Release.** The current release is 0.3.1 (PyTorch 2.13.x, CPython 3.13, TBCCL C ABI 1 / wire protocol 4), whose wheels bundle TBCCL 0.7.1. It is experimental.
 ```
 
 <nav class="tb-eco" aria-label="TBCCL ecosystem: the four documentation sites">
